@@ -1,0 +1,9 @@
+#!/bin/bash
+FIFODIR=/tmp
+TMPDIR=~/tetra-raw
+TGTDIR=~tetra-mount/tetra-wav
+OSMODIR=~/osmo-tetra/src
+CODECDIR=~/codec/c-code
+COUNT=36
+LD_LIBRARY_PATH=/usr/local/lib:/usr/lib:/lib
+PYTHONPATH=/usr/local/lib/python2.7/site-packages:/usr/local/lib/python2.7/dist-packages:/usr/local/lib64/python2.7/site-packages:/usr/local/lib64/python2.7
