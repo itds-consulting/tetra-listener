@@ -1,89 +1,91 @@
 #!/bin/bash
 
-. ./config.sh || exit 1
+# main script, start tetra ?reciever? and demodulator
 
-rm /tmp/tetramon.lock
+ROOT=$(dirname $(dirname $(realpath ${0})))
 
-[ $COUNT = 0 ] && exit
-let COUNT=COUNT-1
-for i in `seq 0 $COUNT`; do
-	rm -f "${FIFODIR}/*"
-	mkfifo "${FIFODIR}/floats$i"
-	mkfifo "${FIFODIR}/bits$i"
-	mkdir -p "$TMPDIR/$i"
+. ${ROOT}/radio-tetra/config.sh || exit 1
+
+# reset monitoring, we are alive and happy, now
+rm -f ${MONITOR_LOCK}
+
+! [ "$STREAMS" -gt 0 ] && exit
+
+rm -rf ${FIFO_TMP_DIR}
+mkdir -p ${FIFO_TMP_DIR}
+for i in `seq 1 $STREAMS`; do
+	mkfifo "${FIFO_TMP_DIR}/floats$i"
+	mkfifo "${FIFO_TMP_DIR}/bits$i"
+	mkdir -p "${REC_TMP_DIR}/$i"
 done
 
-mkdir "${TGTDIR}"
-PID=
+mkdir ${REC_DIR}
+DEMOD_PID=
 start_demod() {
 	echo "starting osmo-tetra." >&2
-	cd "$OSMODIR"
+	cd "${OSMOTETRA_DIR}"
 #	./demod/python/osmosdr-tetra-multidemod.py -a "rtl_tcp=radio-tetra.brm:1234" -L 25e3 -f 424e6 & >&2
-	./demod/python/tetra-multidemod-channelizer.py & 2>&1
-	PID=$!
+	./demod/python/osmosdr-tetra-multidemod.py & 2>&1
+	DEMOD_PID=$!
 }
 
-start_demod
-
 cleanup() {
-	kill $PID
-	for i in `seq 0 $COUNT`; do
-		rm "${FIFODIR}/floats$i"
-		rm "${FIFODIR}/bits$i"
-	done
-	rm -r "${TMPDIR}/*"
+	kill ${DEMOD_PID}
+	rm -rf ${FIFO_TMP_DIR}
 }
 
 trap cleanup EXIT
-for i in `seq 0 $COUNT`; do
-	echo "tetra-rx $i"
-	./float_to_bits "${FIFODIR}/floats${i}" "${FIFODIR}/bits${i}" &
-#	./tetra-rx "${FIFODIR}/bits${i}" "$TMPDIR/$i" >~/rx-$i.log 2>&1 &
-	./tetra-rx "${FIFODIR}/bits${i}" "$TMPDIR/$i" >/dev/null 2>&1 &
-
+cd "${OSMOTETRA_DIR}"
+for i in `seq 1 ${STREAMS}`; do
+	echo "tetra-rx ${i}"
+	./float_to_bits "${FIFO_TMP_DIR}/floats${i}" "${FIFO_TMP_DIR}/bits${i}" &
+	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >/dev/null 2>&1 &
 done
 
-cd "$CODECDIR"
+start_demod
 while true; do
-	ps "$PID" >/dev/null || start_demod 
+# FIXME: WTF workaround
+	ps "${DEMOD_PID}" >/dev/null || start_demod
+	cd "${CODEC_DIR}"
 
-	for i in `find "$TMPDIR" -mmin +1 -type f -name '*.out'`; do
-		echo "processing $i"
-		d=`dirname "$i"`
+	for i in `find "${REC_TMP_DIR}" -mmin +1 -type f -name '*.out'`; do
+		echo "processing ${i}"
+		d=`dirname "${i}"`
 		mtime=`stat -c "%Y" "$i"`
 		fsize=`stat -c "%s" "$i"`
 		if [ $fsize -lt 4096 ]; then
-			echo "Skipped $i (${fsize}B)"
-			rm "$i"
+			echo "Skipped ${i} (${fsize}B)"
+			rm "${i}"
 			rm "${i%%.out}.txt"
 			continue;
 		fi
-		dir=`date --date="@$mtime" "+%Y-%m-%d"` 
-		
+		dir=`date --date="@${mtime}" "+%Y-%m-%d"`
+
 		gssi=`cat "${i%%.out}.txt"|grep -v 16777215|sort|uniq -c|sort -n|egrep '^[ ]* [0-9]* [0-9][0-9][0-9][0-9]$'|tail -n 1`
-		if [ -z "$gssi" ]; then
+		if [ -z "${gssi}" ]; then
 			issi=`cat "${i%%.out}.txt"|grep -v 16777215|sort|uniq -c|sort -n|tail -n 1`
 			ssi="${issi##* }"
 		else
 			ssi="${gssi##* }"
 		fi
 
-		[ -z "$ssi" ] && ssi="unknown"
+		[ -z "${ssi}" ] && ssi="unknown"
 
 		#ssi="."
-		fn=`date --date="@$mtime" "+%Y-%m-%d_%H-%M-%S"` # if it starts the same second, we don't care
-		[ ! -d "${TGTDIR}/${dir}/${ssi}" ] && mkdir -p "${TGTDIR}/${dir}/${ssi}"
-		
-		./cdecoder "$i" /tmp/traffic.cdata > /dev/null 2>&1
-		./sdecoder /tmp/traffic.cdata /tmp/traffic.raw  > /dev/null 2>&1
-		sox -r 8000 -e signed -b 16 -c 1 /tmp/traffic.raw "${TGTDIR}/${dir}/${ssi}/${fn}.ogg" > /dev/null 2>&1
-		#sox -r 8000 -e signed -b 16 -c 1 /tmp/traffic.raw "${TGTDIR}/${dir}/${ssi}/${fn}.flac" rate 16k > /dev/null 2>&1
-		
-		mv "${i%%.out}.txt" "${TGTDIR}/${dir}/${ssi}/${fn}.txt"
-		echo "created: ${TGTDIR}/${dir}/${ssi}/${fn}"
-		length=$(($(stat -c %s /tmp/traffic.raw)/16)) # in [ms]
-		/home/tetra/add_group.py -i ${ssi} -t $mtime -l $length
-		rm "$i"
+		fn=`date --date="@${mtime}" "+%Y-%m-%d_%H-%M-%S"` # if it starts the same second, we don't care
+		fpath="${REC_DIR}/${dir}/${ssi}"
+		mkdir -p "${fpath}"
+
+		./cdecoder "$i" ${TMP_DIR}/traffic.cdata > /dev/null 2>&1
+		./sdecoder ${TMP_DIR}/traffic.cdata ${TMP_DIR}/traffic.raw  > /dev/null 2>&1
+		sox -q -r 8000 -e signed -b 16 -c 1 ${TMP_DIR}/traffic.raw "${fpath}/${fn}.${REC_FORMAT}"
+
+		mv "${i%%.out}.txt" "${fpath}/${fn}.txt"
+		echo "created: ${fpath}/${fn}"
+		length=$(($(stat -c %s ${TMP_DIR}/traffic.raw)/16)) # in [ms]
+# WTF, where is the fucking file ???
+#		${ROOT}/add_group.py -i ${ssi} -t ${mtime} -l ${length}
+		rm "${i}"
 	done
 	sleep 5s
 done
