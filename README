@@ -1,0 +1,12 @@
+Brmlab TETRA listener.
+
+== build
+  * clone this repository
+  * update submdules
+
+git submodule init
+git submodule update
+
+  * (download and) build tools
+./build
+
