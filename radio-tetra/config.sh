@@ -24,13 +24,16 @@ TMP_DIR=~/tetra-tmp
 FIFO_TMP_DIR=${TMP_DIR}/fifo
 REC_TMP_DIR=${TMP_DIR}/tetra-raw
 # where to store decoded tetra audio files
-REC_DIR=~/tetra-mount/tetra-rec
+REC_DIR=~/tetra-rec
 # format of audio, use anny of: wav, flac, ogg
 REC_FORMAT=ogg
 # number of decoded channels
 STREAMS=36
 
 # graaaah, workarounds
+
+LD_LIBRARY_PATH=$ROOT/
+PYTHONPATH=$PYTHONPATH:$ROOT/osmo-tetra/src/demod
 
 #LD_LIBRARY_PATH=/usr/local/lib:/usr/lib:/lib
 #PYTHONPATH=/usr/local/lib/python2.7/site-packages:/usr/local/lib/python2.7/dist-packages:/usr/local/lib64/python2.7/site-packages:/usr/local/lib64/python2.7
