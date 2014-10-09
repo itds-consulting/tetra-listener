@@ -11,9 +11,11 @@ rm -f ${MONITOR_LOCK}
 
 ! [ "$STREAMS" -gt 0 ] && exit
 
+let STREAMS=STREAMS-1
+
 rm -rf ${FIFO_TMP_DIR}
 mkdir -p ${FIFO_TMP_DIR}
-for i in `seq 1 $STREAMS`; do
+for i in `seq 0 $STREAMS`; do
 	mkfifo "${FIFO_TMP_DIR}/floats$i"
 	mkfifo "${FIFO_TMP_DIR}/bits$i"
 	mkdir -p "${REC_TMP_DIR}/$i"
@@ -24,7 +26,7 @@ DEMOD_PID=
 start_demod() {
 	echo "starting osmo-tetra." >&2
 	cd "${OSMOTETRA_DIR}"
-#	./demod/python/osmosdr-tetra-multidemod.py -a "rtl_tcp=radio-tetra.brm:1234" -L 25e3 -f 424e6 & >&2
+	#./demod/python/osmosdr-tetra-multidemod.py -a "rtl_tcp=radio-tetra.brm:1234" -L 25e3 -f 424e6 & >&2
 	./demod/python/osmosdr-tetra-multidemod.py & 2>&1
 	DEMOD_PID=$!
 }
@@ -36,10 +38,12 @@ cleanup() {
 
 trap cleanup EXIT
 cd "${OSMOTETRA_DIR}"
-for i in `seq 1 ${STREAMS}`; do
+#rm -rf ${FIFO_TMP_DIR}
+for i in `seq 0 ${STREAMS}`; do
 	echo "tetra-rx ${i}"
 	./float_to_bits "${FIFO_TMP_DIR}/floats${i}" "${FIFO_TMP_DIR}/bits${i}" &
-	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >/dev/null 2>&1 &
+	#./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >/dev/null 2>&1 &
+	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${FIFO_TMP_DIR}/log${i}.txt" 2>&1 &
 done
 
 start_demod
