@@ -48,32 +48,24 @@ class tetra_rx_multi(gr.top_block):
         #self.pfb_channelizer_ccf.set_channel_map(([]))
         #self.pfb_channelizer_ccf.declare_sample_delay(0)
 
-        self.analog_feedforward_agc_cc = []
         self.digital_mpsk_receiver_cc = []
         self.blocks_sink = []
         for ch in range(0, self.channels):
-            #agc = analog.feedforward_agc_cc(1024, 1.0)
-            if ch % 2:
-                mpsk = blocks.copy(8)
-                sink = blocks.null_sink(8)
-            else:
-                mpsk = digital.mpsk_receiver_cc(4, cmath.pi/4, cmath.pi/100.0, -0.5, 0.5, 0.25, 0.001, 2, 0.001, 0.001)
-                sink = blocks.udp_sink(gr.sizeof_float*2, "", 60001, 1472, True)
-                #sink = blocks.null_sink(8)
+            mpsk = digital.mpsk_receiver_cc(
+                    4, cmath.pi/4, cmath.pi/100.0, -0.5, 0.5, 0.25, 0.001, 2, 0.001, 0.001)
+            sink = blocks.udp_sink(gr.sizeof_float*2, "", 60001+ch, 1472, True)
+
             self.connect((self.pfb_channelizer_ccf, ch),
-                    #(agc, 0),
                     (mpsk, 0),
                     (sink, 0))
 
-            #self.analog_feedforward_agc_cc.append(agc)
-            #self.digital_mpsk_receiver_cc.append(mpsk)
+            self.digital_mpsk_receiver_cc.append(mpsk)
             self.blocks_sink.append(sink)
 
         ##################################################
         # Connections
         ##################################################
         self.connect((self.rtlsdr_source, 0), (self.pfb_channelizer_ccf, 0))
-
 
     def get_srate_rx(self):
         return self.srate_rx
