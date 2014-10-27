@@ -29,6 +29,7 @@ start_demod() {
         -p ${TUNE_PPM} \
         -f ${TUNE_FREQ} \
         -g ${TUNE_GAIN} \
+        -l ${TUNE_SQUELCH} \
         -o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
 	DEMOD_PID=$!
 }
