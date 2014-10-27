@@ -8,14 +8,17 @@
 from gnuradio import analog
 from gnuradio import blocks
 from gnuradio import digital
-from gnuradio import digital;import cmath
+from gnuradio import digital
 from gnuradio import eng_notation
 from gnuradio import gr
 from gnuradio.eng_option import eng_option
 from gnuradio.filter import firdes
 from gnuradio.filter import pfb
 from optparse import OptionParser
+import math
 import osmosdr
+import threading
+import time
 
 class tetra_rx_multi(gr.top_block):
 
@@ -29,9 +32,13 @@ class tetra_rx_multi(gr.top_block):
         ##################################################
         self.srate_rx = srate_rx = options.sample_rate
         self.channels = srate_rx / 25000
+        self.srate_channel = 36000
+        self.afc_period = 1
+        self.afc_gain = 1.
+        self.afc_channel = 28
 
         ##################################################
-        # Blocks
+        # Rx Blocks and connections
         ##################################################
         self.rtlsdr_source = osmosdr.source( args="numchan=" + str(1) + " " + "" )
         self.rtlsdr_source.set_sample_rate(srate_rx)
@@ -61,7 +68,7 @@ class tetra_rx_multi(gr.top_block):
         self.blocks_sink = []
         for ch in range(0, self.channels):
             mpsk = digital.mpsk_receiver_cc(
-                    4, cmath.pi/4, cmath.pi/100.0, -0.5, 0.5, 0.25, 0.001, 2, 0.001, 0.001)
+                    4, math.pi/4, math.pi/100.0, -0.5, 0.5, 0.25, 0.001, 2, 0.001, 0.001)
             if out_type == 'udp':
                 sink = blocks.udp_sink(gr.sizeof_gr_complex, dst_ip, int(dst_port)+ch, 1472, True)
             elif out_type == 'file':
@@ -78,10 +85,29 @@ class tetra_rx_multi(gr.top_block):
             self.digital_mpsk_receiver_cc.append(mpsk)
             self.blocks_sink.append(sink)
 
-        ##################################################
-        # Connections
-        ##################################################
         self.connect((self.rtlsdr_source, 0), (self.pfb_channelizer_ccf, 0))
+
+        ##################################################
+        # AFC blocks and connections
+        ##################################################
+        self.analog_quadrature_demod_cf_0 = analog.quadrature_demod_cf(self.srate_channel/(2*math.pi))
+        samp_afc = self.srate_channel*self.afc_period
+        self.blocks_moving_avg_ff_0 = blocks.moving_average_ff(samp_afc, 1./samp_afc)
+        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_vff((self.afc_gain, ))
+        self.freq_err = blocks.probe_signal_f()
+
+        self.connect((self.pfb_channelizer_ccf, self.afc_channel), (self.analog_quadrature_demod_cf_0, 0))
+        self.connect((self.analog_quadrature_demod_cf_0, 0), (self.blocks_moving_avg_ff_0, 0))
+        self.connect((self.blocks_moving_avg_ff_0, 0), (self.freq_err, 0))
+
+        def _afc_error_probe():
+            while True:
+                val = self.freq_err.level()
+                print val
+                time.sleep(self.afc_period)
+        _afc_err_thread = threading.Thread(target=_afc_error_probe)
+        _afc_err_thread.daemon = True
+        _afc_err_thread.start()
 
     def get_srate_rx(self):
         return self.srate_rx
