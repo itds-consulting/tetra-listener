@@ -36,6 +36,7 @@ class tetra_rx_multi(gr.top_block):
         self.afc_period = 1
         self.afc_gain = 1.
         self.afc_channel = 28
+        self.afc_ppm_step = options.frequency / 1.e6
 
         ##################################################
         # Rx Blocks and connections
@@ -103,7 +104,15 @@ class tetra_rx_multi(gr.top_block):
         def _afc_error_probe():
             while True:
                 val = self.freq_err.level()
-                print val
+                if val > self.afc_ppm_step * 2./3:
+                    d = -1
+                elif val < -self.afc_ppm_step * 2./3:
+                    d = 1
+                else:
+                    continue
+                ppm = self.rtlsdr_source.get_freq_corr() + d
+                print ppm
+                self.rtlsdr_source.set_freq_corr(ppm)
                 time.sleep(self.afc_period)
         _afc_err_thread = threading.Thread(target=_afc_error_probe)
         _afc_err_thread.daemon = True
