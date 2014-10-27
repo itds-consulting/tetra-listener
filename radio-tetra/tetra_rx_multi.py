@@ -37,6 +37,7 @@ class tetra_rx_multi(gr.top_block):
         self.afc_gain = 1.
         self.afc_channel = 28
         self.afc_ppm_step = options.frequency / 1.e6
+        self.squelch_lvl = options.level
 
         ##################################################
         # Rx Blocks and connections
@@ -70,6 +71,7 @@ class tetra_rx_multi(gr.top_block):
         for ch in range(0, self.channels):
             mpsk = digital.mpsk_receiver_cc(
                     4, math.pi/4, math.pi/100.0, -0.5, 0.5, 0.25, 0.001, 2, 0.001, 0.001)
+            squelch = analog.pwr_squelch_cc(self.squelch_lvl, 0.001, 0, True)
             if out_type == 'udp':
                 sink = blocks.udp_sink(gr.sizeof_gr_complex, dst_ip, int(dst_port)+ch, 1472, True)
             elif out_type == 'file':
@@ -80,6 +82,7 @@ class tetra_rx_multi(gr.top_block):
                 raise ValueError("Invalid output URL '%s'" % options.output)
 
             self.connect((self.pfb_channelizer_ccf, ch),
+                    (squelch, 0),
                     (mpsk, 0),
                     (sink, 0))
 
@@ -141,6 +144,8 @@ class tetra_rx_multi(gr.top_block):
                 help="set receiver gain")
         parser.add_option("-o", "--output", type=str,
                 help="output URL (eg file:///<FILE_PATH> or udp://DST_IP:PORT, use %d for channel no.")
+        parser.add_option("-l", "--level", type="eng_float", default=-100.,
+                help="Squelch level for channels.")
 
         (options, args) = parser.parse_args()
         if len(args) != 0:
