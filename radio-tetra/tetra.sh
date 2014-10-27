@@ -25,9 +25,11 @@ mkdir ${REC_DIR}
 DEMOD_PID=
 start_demod() {
 	echo "starting osmo-tetra." >&2
-	cd "${OSMOTETRA_DIR}"
-	#./demod/python/osmosdr-tetra-multidemod.py -a "rtl_tcp=radio-tetra.brm:1234" -L 25e3 -f 424e6 & >&2
-	./demod/python/osmosdr-tetra-multidemod.py & 2>&1
+	${ROOT}/radio-tetra/tetra_rx_multi.py \
+        -p ${TUNE_PPM} \
+        -f ${TUNE_FREQ} \
+        -g ${TUNE_GAIN} \
+        -o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
 	DEMOD_PID=$!
 }
 
@@ -41,7 +43,7 @@ cd "${OSMOTETRA_DIR}"
 #rm -rf ${FIFO_TMP_DIR}
 for i in `seq 0 ${STREAMS}`; do
 	echo "tetra-rx ${i}"
-	./float_to_bits "${FIFO_TMP_DIR}/floats${i}" "${FIFO_TMP_DIR}/bits${i}" &
+	#./float_to_bits "${FIFO_TMP_DIR}/floats${i}" "${FIFO_TMP_DIR}/bits${i}" &
 	#./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >/dev/null 2>&1 &
 	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${FIFO_TMP_DIR}/log${i}.txt" 2>&1 &
 done

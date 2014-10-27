@@ -28,7 +28,11 @@ REC_DIR=~/tetra-rec
 # format of audio, use anny of: wav, flac, ogg
 REC_FORMAT=ogg
 # number of decoded channels
-STREAMS=10
+STREAMS=72
+
+TUNE_FREQ=424e6
+TUNE_PPM=36
+TUNE_GAIN=36
 
 # graaaah, workarounds
 
