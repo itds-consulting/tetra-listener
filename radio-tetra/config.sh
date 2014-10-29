@@ -17,7 +17,7 @@ MONITOR_TIME=15
 # resend monitoring warning every N minutes
 MONITOR_TIME_RESEND=30
 # whitespace separated list of monitoring recipients
-MONITOR_RECIPIENTS="jenda@hrach.eu mrkva@mrkva.eu pasky@ucw.cz tomsuch@tomsuch.net"
+MONITOR_RECIPIENTS=""
 
 # decoder temporary files, fifos etc ...
 TMP_DIR=~/tetra-tmp
