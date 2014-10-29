@@ -42,7 +42,7 @@ class tetra_rx_multi(gr.top_block):
         ##################################################
         # Rx Blocks and connections
         ##################################################
-        self.rtlsdr_source = osmosdr.source( args="numchan=1," + options.args )
+        self.rtlsdr_source = osmosdr.source( args="numchan=1 " + options.args )
         self.rtlsdr_source.set_sample_rate(srate_rx)
         self.rtlsdr_source.set_center_freq(options.frequency, 0)
         self.rtlsdr_source.set_freq_corr(options.ppm, 0)
