@@ -35,6 +35,8 @@ TUNE_PPM=36
 TUNE_GAIN=36
 # squelch level, ignore channels with low signal (dB)
 TUNE_SQUELCH=-56
+# arguments for osmo-sdr RX block, use rtl_tcp=<ADDR>:<PORT> for TCP source
+TUNE_OSMO_ARGS=""
 
 # graaaah, workarounds
 

@@ -30,6 +30,7 @@ start_demod() {
         -f ${TUNE_FREQ} \
         -g ${TUNE_GAIN} \
         -l ${TUNE_SQUELCH} \
+        -a ${TUNE_OSMO_ARGS} \
         -o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
 	DEMOD_PID=$!
 }
