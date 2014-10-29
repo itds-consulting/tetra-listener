@@ -10,5 +10,6 @@ git submodule update
   * (download and) build tools
 ./build
 
-  * edit config in file config.sh
-  * TODO
+  * edit config in file radio-tetra/config.sh
+  * execute radio-tetra/tetra.sh
+
