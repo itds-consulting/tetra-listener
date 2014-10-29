@@ -21,7 +21,7 @@ for i in `seq 0 $STREAMS`; do
 	mkdir -p "${REC_TMP_DIR}/$i"
 done
 
-mkdir ${REC_DIR}
+mkdir -p ${REC_DIR}
 DEMOD_PID=
 start_demod() {
 	echo "starting osmo-tetra." >&2
