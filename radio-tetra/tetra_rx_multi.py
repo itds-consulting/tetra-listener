@@ -35,7 +35,7 @@ class tetra_rx_multi(gr.top_block):
         self.srate_channel = 36000
         self.afc_period = 1
         self.afc_gain = 1.
-        self.afc_channel = 28
+        self.afc_channel = options.auto_tune
         self.afc_ppm_step = options.frequency / 1.e6
         self.squelch_lvl = options.level
         self.debug = options.debug
@@ -126,33 +126,34 @@ class tetra_rx_multi(gr.top_block):
         ##################################################
         # AFC blocks and connections
         ##################################################
-        self.analog_quadrature_demod_cf_0 = analog.quadrature_demod_cf(self.srate_channel/(2*math.pi))
-        samp_afc = self.srate_channel*self.afc_period
-        self.blocks_moving_avg_ff_0 = blocks.moving_average_ff(samp_afc, 1./samp_afc)
-        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_vff((self.afc_gain, ))
-        self.freq_err = blocks.probe_signal_f()
+        if self.afc_channel is not None:
+            self.analog_quadrature_demod_cf_0 = analog.quadrature_demod_cf(self.srate_channel/(2*math.pi))
+            samp_afc = self.srate_channel*self.afc_period
+            self.blocks_moving_avg_ff_0 = blocks.moving_average_ff(samp_afc, 1./samp_afc)
+            self.blocks_multiply_const_vxx_0 = blocks.multiply_const_vff((self.afc_gain, ))
+            self.freq_err = blocks.probe_signal_f()
 
-        self.connect((self.pfb_channelizer_ccf, self.afc_channel), (self.analog_quadrature_demod_cf_0, 0))
-        self.connect((self.analog_quadrature_demod_cf_0, 0), (self.blocks_moving_avg_ff_0, 0))
-        self.connect((self.blocks_moving_avg_ff_0, 0), (self.freq_err, 0))
+            self.connect((self.pfb_channelizer_ccf, self.afc_channel), (self.analog_quadrature_demod_cf_0, 0))
+            self.connect((self.analog_quadrature_demod_cf_0, 0), (self.blocks_moving_avg_ff_0, 0))
+            self.connect((self.blocks_moving_avg_ff_0, 0), (self.freq_err, 0))
 
-        def _afc_error_probe():
-            while True:
-                val = self.freq_err.level()
-                if val > self.afc_ppm_step * 2./3:
-                    d = -1
-                elif val < -self.afc_ppm_step * 2./3:
-                    d = 1
-                else:
-                    continue
-                ppm = self.rtlsdr_source.get_freq_corr() + d
-                if self.debug:
-                    print "ppm: %d" % ppm
-                self.rtlsdr_source.set_freq_corr(ppm)
-                time.sleep(self.afc_period)
-        _afc_err_thread = threading.Thread(target=_afc_error_probe)
-        _afc_err_thread.daemon = True
-        _afc_err_thread.start()
+            def _afc_error_probe():
+                while True:
+                    val = self.freq_err.level()
+                    if val > self.afc_ppm_step * 2./3:
+                        d = -1
+                    elif val < -self.afc_ppm_step * 2./3:
+                        d = 1
+                    else:
+                        continue
+                    ppm = self.rtlsdr_source.get_freq_corr() + d
+                    if self.debug:
+                        print "ppm: %d" % ppm
+                    self.rtlsdr_source.set_freq_corr(ppm)
+                    time.sleep(self.afc_period)
+            _afc_err_thread = threading.Thread(target=_afc_error_probe)
+            _afc_err_thread.daemon = True
+            _afc_err_thread.start()
 
     def get_srate_rx(self):
         return self.srate_rx
@@ -181,6 +182,8 @@ class tetra_rx_multi(gr.top_block):
                 help="output URL (eg file:///<FILE_PATH> or udp://DST_IP:PORT, use %d for channel no.")
         parser.add_option("-l", "--level", type="eng_float", default=-100.,
                 help="Squelch level for channels.")
+        parser.add_option("-t", "--auto-tune", type=int, default=None,
+                help="Enable automatic PPM corection based on channel N")
 
         (options, args) = parser.parse_args()
         if len(args) != 0:
