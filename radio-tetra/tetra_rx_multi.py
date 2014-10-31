@@ -66,17 +66,33 @@ class tetra_rx_multi(gr.top_block):
         #self.pfb_channelizer_ccf.set_channel_map(([]))
         #self.pfb_channelizer_ccf.declare_sample_delay(0)
 
+        self.squelch = []
         self.digital_mpsk_receiver_cc = []
+        self.diff_phasor = []
+        self.complex_to_arg = []
+        self.multiply_const = []
+        self.add_const = []
+        self.float_to_uchar = []
+        self.map_bits = []
+        self.unpack_k_bits = []
         self.blocks_sink = []
         for ch in range(0, self.channels):
+            squelch = analog.pwr_squelch_cc(self.squelch_lvl, 0.001, 0, True)
             mpsk = digital.mpsk_receiver_cc(
                     4, math.pi/4, math.pi/100.0, -0.5, 0.5, 0.25, 0.001, 2, 0.001, 0.001)
-            squelch = analog.pwr_squelch_cc(self.squelch_lvl, 0.001, 0, True)
+            diff_phasor = digital.diff_phasor_cc()
+            complex_to_arg = blocks.complex_to_arg(1)
+            multiply_const = blocks.multiply_const_vff((2./math.pi, ))
+            add_const = blocks.add_const_vff((1.5, ))
+            float_to_uchar = blocks.float_to_uchar()
+            map_bits = digital.map_bb(([3, 2, 0, 1, 3]))
+            unpack_k_bits = blocks.unpack_k_bits_bb(2)
+
             if out_type == 'udp':
-                sink = blocks.udp_sink(gr.sizeof_gr_complex, dst_ip, int(dst_port)+ch, 1472, True)
+                sink = blocks.udp_sink(gr.sizeof_gr_char, dst_ip, int(dst_port)+ch, 1472, True)
             elif out_type == 'file':
                 print dst_path % ch
-                sink = blocks.file_sink(gr.sizeof_gr_complex*1, dst_path % ch, False)
+                sink = blocks.file_sink(gr.sizeof_char, dst_path % ch, False)
                 sink.set_unbuffered(True)
             else:
                 raise ValueError("Invalid output URL '%s'" % options.output)
@@ -84,9 +100,24 @@ class tetra_rx_multi(gr.top_block):
             self.connect((self.pfb_channelizer_ccf, ch),
                     (squelch, 0),
                     (mpsk, 0),
+                    diff_phasor,
+                    complex_to_arg,
+                    multiply_const,
+                    add_const,
+                    float_to_uchar,
+                    map_bits,
+                    unpack_k_bits,
                     (sink, 0))
 
+            self.squelch.append(squelch)
             self.digital_mpsk_receiver_cc.append(mpsk)
+            self.diff_phasor.append(diff_phasor)
+            self.complex_to_arg.append(complex_to_arg)
+            self.multiply_const.append(multiply_const)
+            self.add_const.append(add_const)
+            self.float_to_uchar.append(float_to_uchar)
+            self.map_bits.append(map_bits)
+            self.unpack_k_bits.append(unpack_k_bits)
             self.blocks_sink.append(sink)
 
         self.connect((self.rtlsdr_source, 0), (self.pfb_channelizer_ccf, 0))
