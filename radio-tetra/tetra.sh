@@ -25,13 +25,15 @@ mkdir -p ${REC_DIR}
 DEMOD_PID=
 start_demod() {
 	echo "starting osmo-tetra." >&2
+	AUTO_TUNE_CHANNEL=${AUTO_TUNE_CHANNEL:+-t ${AUTO_TUNE_CHANNEL}}
 	${ROOT}/radio-tetra/tetra_rx_multi.py \
-        -p "${TUNE_PPM}" \
-        -f "${TUNE_FREQ}" \
-        -g "${TUNE_GAIN}" \
-        -l "${TUNE_SQUELCH}" \
-        -a "${TUNE_OSMO_ARGS}" \
-        -o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
+		-p "${TUNE_PPM}" \
+		-f "${TUNE_FREQ}" \
+		-g "${TUNE_GAIN}" \
+		-l "${TUNE_SQUELCH}" \
+		-a "${TUNE_OSMO_ARGS}" \
+		"${AUTO_TUNE_CHANNEL}" \
+		-o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
 	DEMOD_PID=$!
 }
 
