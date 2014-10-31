@@ -35,9 +35,9 @@ if [ $(find ${REC_DIR}/${NOW}/ -mmin -${MONITOR_TIME} | wc -l) -lt 2 ]; then
   if [ -e ${MONITOR_LOCK} ]; then
     exit 0
   fi
-  echo "V poslednich ${MONITOR_TIME} minutach se nenahral zadny soubor na tetre.
- 
-    Tento e-mail neni nevyzadanym obchodnim sdelenim NSA Litomerice ve smyslu par. 1574 odst. 74c zakona 9914/2013 Sbrm. Pokud jej povazujete za spam, smazte svoji adresu v `hostname`:${CFG}." | mail -s "Spadla TETRA" ${MONITOR_RECIPIENTS}
+   echo "V poslednich ${MONITOR_TIME} minutach se nenahral zadny soubor na tetre.
+
+       Tento e-mail neni nevyzadanym obchodnim sdelenim NSA Litomerice ve smyslu par. 1574 odst. 74c zakona 9914/2013 Sbrm. Pokud jej povazujete za spam, smazte svoji adresu v `hostname`:${CFG}." | mail -s "Petra spadla." ${MONITOR_RECIPIENTS}
   touch ${MONITOR_LOCK}
 else
   rm -f ${MONITOR_LOCK}
