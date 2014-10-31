@@ -38,6 +38,7 @@ class tetra_rx_multi(gr.top_block):
         self.afc_channel = 28
         self.afc_ppm_step = options.frequency / 1.e6
         self.squelch_lvl = options.level
+        self.debug = options.debug
 
         ##################################################
         # Rx Blocks and connections
@@ -145,7 +146,8 @@ class tetra_rx_multi(gr.top_block):
                 else:
                     continue
                 ppm = self.rtlsdr_source.get_freq_corr() + d
-                print ppm
+                if self.debug:
+                    print "ppm: %d" % ppm
                 self.rtlsdr_source.set_freq_corr(ppm)
                 time.sleep(self.afc_period)
         _afc_err_thread = threading.Thread(target=_afc_error_probe)
@@ -165,6 +167,8 @@ class tetra_rx_multi(gr.top_block):
 
         parser.add_option("-a", "--args", type="string", default="",
                 help="gr-osmosdr device arguments")
+        parser.add_option("-d", "--debug", action="store_true", default=False,
+                help="Print out debug infroations")
         parser.add_option("-s", "--sample-rate", type="eng_float", default=1800000,
                 help="set receiver sample rate (default 1800000, must be multiple of 900000)")
         parser.add_option("-f", "--frequency", type="eng_float", default=394.4e6,
