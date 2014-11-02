@@ -40,6 +40,9 @@ TUNE_OSMO_ARGS=""
 # automatically tune PPM to selected channel
 #AUTO_TUNE_CHANNEL=0
 
+# set to yes to enable debug logging
+#DEBUG=yes
+
 # graaaah, workarounds
 
 LD_LIBRARY_PATH=$ROOT/
