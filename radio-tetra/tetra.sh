@@ -43,7 +43,6 @@ start_demod() {
 
 cleanup() {
 	kill ${DEMOD_PID}
-	rm -rf ${FIFO_TMP_DIR}
 }
 
 trap cleanup EXIT
