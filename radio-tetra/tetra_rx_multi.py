@@ -39,6 +39,8 @@ class tetra_rx_multi(gr.top_block):
         self.afc_ppm_step = options.frequency / 1.e6
         self.squelch_lvl = options.level
         self.debug = options.debug
+        self.pwr_probe_channels = \
+                [int(x) for x in options.debug_channels_pwr.split(',') if x]
 
         ##################################################
         # Rx Blocks and connections
@@ -92,7 +94,6 @@ class tetra_rx_multi(gr.top_block):
             if out_type == 'udp':
                 sink = blocks.udp_sink(gr.sizeof_gr_char, dst_ip, int(dst_port)+ch, 1472, True)
             elif out_type == 'file':
-                print dst_path % ch
                 sink = blocks.file_sink(gr.sizeof_char, dst_path % ch, False)
                 sink.set_unbuffered(True)
             else:
@@ -124,6 +125,27 @@ class tetra_rx_multi(gr.top_block):
         self.connect((self.rtlsdr_source, 0), (self.pfb_channelizer_ccf, 0))
 
         ##################################################
+        # channel power probes - debugging only
+        ##################################################
+        self.pwr_probes = []
+        for ch in self.pwr_probe_channels:
+            probe = analog.probe_avg_mag_sqrd_c(0, 1./self.srate_channel)
+            self.pwr_probes.append(probe)
+            self.connect((self.pfb_channelizer_ccf, ch), (probe, 0))
+        def _probe():
+            while True:
+                time.sleep(1)
+
+                s = "PWR: "
+                for probe in self.pwr_probes:
+                    s += "%2.2f; " % (10 * math.log10(probe.level()))
+                print s
+        if self.pwr_probe_channels:
+            self._probe_thread = threading.Thread(target=_probe)
+            self._probe_thread.daemon = True
+            self._probe_thread.start()
+
+        ##################################################
         # AFC blocks and connections
         ##################################################
         if self.afc_channel is not None:
@@ -139,6 +161,7 @@ class tetra_rx_multi(gr.top_block):
 
             def _afc_error_probe():
                 while True:
+                    time.sleep(self.afc_period*2)
                     val = self.freq_err.level()
                     if val > self.afc_ppm_step * 2./3:
                         d = -1
@@ -148,9 +171,8 @@ class tetra_rx_multi(gr.top_block):
                         continue
                     ppm = self.rtlsdr_source.get_freq_corr() + d
                     if self.debug:
-                        print "ppm: %d" % ppm
+                        print "PPM: % 4d err: %f" % (ppm, val, )
                     self.rtlsdr_source.set_freq_corr(ppm)
-                    time.sleep(self.afc_period)
             _afc_err_thread = threading.Thread(target=_afc_error_probe)
             _afc_err_thread.daemon = True
             _afc_err_thread.start()
@@ -169,7 +191,9 @@ class tetra_rx_multi(gr.top_block):
         parser.add_option("-a", "--args", type="string", default="",
                 help="gr-osmosdr device arguments")
         parser.add_option("-d", "--debug", action="store_true", default=False,
-                help="Print out debug infroations")
+                help="Print out debug informations")
+        parser.add_option("--debug-channels-pwr", type="string", default="",
+                help="Print power value for specified channels")
         parser.add_option("-s", "--sample-rate", type="eng_float", default=1800000,
                 help="set receiver sample rate (default 1800000, must be multiple of 900000)")
         parser.add_option("-f", "--frequency", type="eng_float", default=394.4e6,

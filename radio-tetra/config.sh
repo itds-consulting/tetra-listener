@@ -42,6 +42,8 @@ TUNE_OSMO_ARGS=""
 
 # set to yes to enable debug logging
 #DEBUG=yes
+# comma separated list of channels for printing signal strenght
+DEBUG_CHENNELS_PWR=""
 
 # graaaah, workarounds
 

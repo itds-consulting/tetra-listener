@@ -27,14 +27,16 @@ start_demod() {
 	echo "starting osmo-tetra." >&2
 	AUTO_TUNE_CHANNEL=${AUTO_TUNE_CHANNEL:+-t ${AUTO_TUNE_CHANNEL}}
 	DEBUG=${DEBUG:+-d}
+	DEBUG_CHENNELS_PWR=${DEBUG_CHENNELS_PWR:+--debug-channels-pwr ${DEBUG_CHENNELS_PWR}}
 	${ROOT}/radio-tetra/tetra_rx_multi.py \
 		-p "${TUNE_PPM}" \
 		-f "${TUNE_FREQ}" \
 		-g "${TUNE_GAIN}" \
 		-l "${TUNE_SQUELCH}" \
 		-a "${TUNE_OSMO_ARGS}" \
-		"${AUTO_TUNE_CHANNEL}" \
+		${AUTO_TUNE_CHANNEL} \
 		${DEBUG} \
+		${DEBUG_CHENNELS_PWR} \
 		-o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
 	DEMOD_PID=$!
 }
