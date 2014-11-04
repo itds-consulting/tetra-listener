@@ -7,6 +7,11 @@ Brmlab TETRA listener.
 git submodule init
 git submodule update
 
+  * install required dependencies
+    * libosmocore
+    * gnuradio
+    * gr-osmosdr
+
   * (download and) build tools
 ./build
 
