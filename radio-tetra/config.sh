@@ -32,7 +32,8 @@ STREAMS=72
 
 TUNE_FREQ=424e6
 TUNE_PPM=0
-TUNE_GAIN=36
+# set gain, comment out for automatic gain setting
+#TUNE_GAIN=36
 # squelch level, ignore channels with low signal (dB)
 TUNE_SQUELCH=-56
 # arguments for osmo-sdr RX block, use rtl_tcp=<ADDR>:<PORT> for TCP source
