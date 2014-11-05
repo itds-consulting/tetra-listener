@@ -66,8 +66,6 @@ class tetra_rx_multi(gr.top_block):
               (firdes.root_raised_cosine(1, srate_rx, 18000, 0.35, 1024)),
               36./25.,
               100)
-        #self.pfb_channelizer_ccf.set_channel_map(([]))
-        #self.pfb_channelizer_ccf.declare_sample_delay(0)
 
         self.squelch = []
         self.digital_mpsk_receiver_cc = []
