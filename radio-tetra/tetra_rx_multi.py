@@ -41,6 +41,9 @@ class tetra_rx_multi(gr.top_block):
         self.debug = options.debug
         self.pwr_probe_channels = \
                 [int(x) for x in options.debug_channels_pwr.split(',') if x]
+        self.last_pwr = -100000
+        self.atd_bw = options.atd_bw or srate_rx
+        self.atd_level = options.atd_level
 
         ##################################################
         # Rx Blocks and connections
@@ -123,19 +126,47 @@ class tetra_rx_multi(gr.top_block):
         self.connect((self.src, 0), (self.pfb_channelizer_ccf, 0))
 
         ##################################################
-        # channel power probes - debugging only
+        # signal strenght identification
         ##################################################
         self.pwr_probes = []
-        for ch in self.pwr_probe_channels:
-            probe = analog.probe_avg_mag_sqrd_c(0, 1./self.srate_channel)
-            self.pwr_probes.append(probe)
-            self.connect((self.pfb_channelizer_ccf, ch), (probe, 0))
+        for ch in range(self.channels):
+            if ch >= self.channels / 2:
+                ch_ = (self.channels - ch - 1)
+            else:
+                ch_ = ch
+            if (float(ch_) / self.channels * 2) > (self.atd_bw / srate_rx):
+                self.pwr_probes.append(None)
+                continue
+            pwr_probe = analog.probe_avg_mag_sqrd_c(0, 1./self.srate_channel)
+            self.pwr_probes.append(pwr_probe)
+            self.connect((self.pfb_channelizer_ccf, ch), (pwr_probe, 0))
+        def _pwr_probe():
+            while True:
+                time.sleep(2)
+
+                pwr = [10 * math.log10(p.level()) for p in self.pwr_probes if p is not None]
+                pwr = min(pwr) + self.atd_level
+                if abs(pwr - self.last_pwr) > (self.atd_level / 2):
+                    for s in self.squelch:
+                        s.set_threshold(pwr)
+                    self.last_pwr = pwr
+        if options.atd_level is not None:
+            self._pwr_probe_thread = threading.Thread(target=_pwr_probe)
+            self._pwr_probe_thread.daemon = True
+            self._pwr_probe_thread.start()
+
+        ##################################################
+        # channel power probes - debugging only
+        ##################################################
         def _probe():
             while True:
                 time.sleep(1)
 
                 s = "PWR: "
-                for probe in self.pwr_probes:
+                for ch in self.pwr_probe_channels:
+                    probe = self.pwr_probes[ch]
+                    if probe is None:
+                        continue
                     s += "%2.2f; " % (10 * math.log10(probe.level()))
                 print s
         if self.pwr_probe_channels:
@@ -207,6 +238,10 @@ class tetra_rx_multi(gr.top_block):
                 help="Squelch level for channels.")
         parser.add_option("-t", "--auto-tune", type=int, default=None,
                 help="Enable automatic PPM corection based on channel N")
+        parser.add_option("--atd-bw", type="eng_float", default=None,
+                help="Bandwidth usefull for automatic threshold detection")
+        parser.add_option("--atd-level", type="eng_float", default=None,
+                help="Signal strenght (above detected noise level) used as a level")
 
         (options, args) = parser.parse_args()
         if len(args) != 0:
