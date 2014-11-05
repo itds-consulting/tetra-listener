@@ -31,15 +31,18 @@ start_demod() {
 	TUNE_PPM=${TUNE_PPM:+-p ${TUNE_PPM}}
 	TUNE_GAIN=${TUNE_GAIN:+-g ${TUNE_GAIN}}
 	TUNE_OSMO_ARGS=${TUNE_OSMO_ARGS:+-a ${TUNE_OSMO_ARGS}}
+	TUNE_ATD_BW=${TUNE_ATD_BW:+--atd-bw ${TUNE_ATD_BW}}
+	TUNE_ATD_LEVEL=${TUNE_ATD_LEVEL:+--atd-level ${TUNE_ATD_LEVEL}}
 	${ROOT}/radio-tetra/tetra_rx_multi.py \
 		-f "${TUNE_FREQ}" \
 		"${TUNE_PPM}" \
 		"${TUNE_GAIN}" \
-		-l "${TUNE_SQUELCH}" \
 		"${TUNE_OSMO_ARGS}" \
 		${AUTO_TUNE_CHANNEL} \
 		${DEBUG} \
 		${DEBUG_CHENNELS_PWR} \
+		${TUNE_ATD_BW} \
+		${TUNE_ATD_LEVEL} \
 		-o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
 	DEMOD_PID=$!
 }

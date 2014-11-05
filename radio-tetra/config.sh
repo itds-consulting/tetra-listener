@@ -34,8 +34,10 @@ TUNE_FREQ=424e6
 TUNE_PPM=0
 # set gain, comment out for automatic gain setting
 #TUNE_GAIN=36
-# squelch level, ignore channels with low signal (dB)
-TUNE_SQUELCH=-56
+# band width usefull for automatic squelch threshold detection
+TUNE_ATD_BW=1400000
+# therhold (above detected noise level) fot automatic squelch
+TUNE_ATD_LEVEL=3
 # arguments for osmo-sdr RX block, use rtl_tcp=<ADDR>:<PORT> for TCP source
 TUNE_OSMO_ARGS=""
 # automatically tune PPM to selected channel
