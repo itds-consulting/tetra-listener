@@ -35,9 +35,9 @@ start_demod() {
 	TUNE_ATD_LEVEL=${TUNE_ATD_LEVEL:+--atd-level ${TUNE_ATD_LEVEL}}
 	${ROOT}/radio-tetra/tetra_rx_multi.py \
 		-f "${TUNE_FREQ}" \
-		"${TUNE_PPM}" \
-		"${TUNE_GAIN}" \
-		"${TUNE_OSMO_ARGS}" \
+		${TUNE_PPM} \
+		${TUNE_GAIN} \
+		${TUNE_OSMO_ARGS} \
 		${AUTO_TUNE_CHANNEL} \
 		${DEBUG} \
 		${DEBUG_CHENNELS_PWR} \
