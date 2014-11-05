@@ -45,17 +45,17 @@ class tetra_rx_multi(gr.top_block):
         ##################################################
         # Rx Blocks and connections
         ##################################################
-        self.rtlsdr_source = osmosdr.source( args=options.args )
-        self.rtlsdr_source.set_sample_rate(srate_rx)
-        self.rtlsdr_source.set_center_freq(options.frequency, 0)
-        self.rtlsdr_source.set_freq_corr(options.ppm, 0)
-        self.rtlsdr_source.set_dc_offset_mode(0, 0)
-        self.rtlsdr_source.set_iq_balance_mode(0, 0)
+        self.src = osmosdr.source( args=options.args )
+        self.src.set_sample_rate(srate_rx)
+        self.src.set_center_freq(options.frequency, 0)
+        self.src.set_freq_corr(options.ppm, 0)
+        self.src.set_dc_offset_mode(0, 0)
+        self.src.set_iq_balance_mode(0, 0)
         if options.gain is not None:
-            self.rtlsdr_source.set_gain_mode(False, 0)
-            self.rtlsdr_source.set_gain(36, 0)
+            self.src.set_gain_mode(False, 0)
+            self.src.set_gain(36, 0)
         else:
-            self.rtlsdr_source.set_gain_mode(True, 0)
+            self.src.set_gain_mode(True, 0)
 
         out_type, dst_path = options.output.split("://", 1)
         if out_type == "udp":
@@ -122,7 +122,7 @@ class tetra_rx_multi(gr.top_block):
             self.unpack_k_bits.append(unpack_k_bits)
             self.blocks_sink.append(sink)
 
-        self.connect((self.rtlsdr_source, 0), (self.pfb_channelizer_ccf, 0))
+        self.connect((self.src, 0), (self.pfb_channelizer_ccf, 0))
 
         ##################################################
         # channel power probes - debugging only
@@ -149,15 +149,15 @@ class tetra_rx_multi(gr.top_block):
         # AFC blocks and connections
         ##################################################
         if self.afc_channel is not None:
-            self.analog_quadrature_demod_cf_0 = analog.quadrature_demod_cf(self.srate_channel/(2*math.pi))
+            self.afc_demod = analog.quadrature_demod_cf(self.srate_channel/(2*math.pi))
             samp_afc = self.srate_channel*self.afc_period
-            self.blocks_moving_avg_ff_0 = blocks.moving_average_ff(samp_afc, 1./samp_afc)
-            self.blocks_multiply_const_vxx_0 = blocks.multiply_const_vff((self.afc_gain, ))
+            self.afc_avg = blocks.moving_average_ff(samp_afc, 1./samp_afc*self.afc_gain)
             self.freq_err = blocks.probe_signal_f()
 
-            self.connect((self.pfb_channelizer_ccf, self.afc_channel), (self.analog_quadrature_demod_cf_0, 0))
-            self.connect((self.analog_quadrature_demod_cf_0, 0), (self.blocks_moving_avg_ff_0, 0))
-            self.connect((self.blocks_moving_avg_ff_0, 0), (self.freq_err, 0))
+            self.connect(
+                    (self.pfb_channelizer_ccf, self.afc_channel),
+                    (self.afc_demod, 0),
+                    (self.freq_err, 0))
 
             def _afc_error_probe():
                 while True:
@@ -169,10 +169,10 @@ class tetra_rx_multi(gr.top_block):
                         d = 1
                     else:
                         continue
-                    ppm = self.rtlsdr_source.get_freq_corr() + d
+                    ppm = self.src.get_freq_corr() + d
                     if self.debug:
                         print "PPM: % 4d err: %f" % (ppm, val, )
-                    self.rtlsdr_source.set_freq_corr(ppm)
+                    self.src.set_freq_corr(ppm)
             _afc_err_thread = threading.Thread(target=_afc_error_probe)
             _afc_err_thread.daemon = True
             _afc_err_thread.start()
@@ -182,7 +182,7 @@ class tetra_rx_multi(gr.top_block):
 
     def set_srate_rx(self, srate_rx):
         self.srate_rx = srate_rx
-        self.rtlsdr_source.set_sample_rate(self.srate_rx)
+        self.src.set_sample_rate(self.srate_rx)
         self.pfb_channelizer_ccf.set_taps((firdes.root_raised_cosine(1, self.srate_rx, 18000, 0.35, 1024)))
 
     def get_options(self):
