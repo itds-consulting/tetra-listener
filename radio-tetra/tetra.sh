@@ -16,7 +16,6 @@ let STREAMS=STREAMS-1
 rm -rf ${FIFO_TMP_DIR}
 mkdir -p ${FIFO_TMP_DIR}
 for i in `seq 0 $STREAMS`; do
-	mkfifo "${FIFO_TMP_DIR}/floats$i"
 	mkfifo "${FIFO_TMP_DIR}/bits$i"
 	mkdir -p "${REC_TMP_DIR}/$i"
 done
@@ -55,9 +54,7 @@ trap cleanup EXIT
 cd "${OSMOTETRA_DIR}"
 #rm -rf ${FIFO_TMP_DIR}
 for i in `seq 0 ${STREAMS}`; do
-	#./float_to_bits "${FIFO_TMP_DIR}/floats${i}" "${FIFO_TMP_DIR}/bits${i}" &
-	#./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >/dev/null 2>&1 &
-	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${FIFO_TMP_DIR}/log${i}.txt" 2>&1 &
+	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${REC_TMP_DIR}/log${i}.txt" 2>&1 &
 done
 
 start_demod
