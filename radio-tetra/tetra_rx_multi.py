@@ -155,6 +155,7 @@ class tetra_rx_multi(gr.top_block):
             self.connect(
                     (self.pfb_channelizer_ccf, self.afc_channel),
                     (self.afc_demod, 0),
+                    (self.afc_avg, 0),
                     (self.freq_err, 0))
 
             def _afc_error_probe():
