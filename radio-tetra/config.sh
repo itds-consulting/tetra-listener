@@ -31,7 +31,7 @@ REC_FORMAT=ogg
 STREAMS=72
 
 TUNE_FREQ=424e6
-TUNE_PPM=0
+TUNE_PPM=55
 # set gain, comment out for automatic gain setting
 #TUNE_GAIN=36
 # band width usefull for automatic squelch threshold detection
@@ -41,12 +41,12 @@ TUNE_ATD_LEVEL=3
 # arguments for osmo-sdr RX block, use rtl_tcp=<ADDR>:<PORT> for TCP source
 TUNE_OSMO_ARGS=""
 # automatically tune PPM to selected channel
-#AUTO_TUNE_CHANNEL=0
+AUTO_TUNE_CHANNEL=70
 
 # set to yes to enable debug logging
-#DEBUG=yes
+DEBUG=yes
 # comma separated list of channels for printing signal strenght
-DEBUG_CHENNELS_PWR=""
+DEBUG_CHENNELS_PWR="0,1,2,3,4,5,6,71,70,69,68,67,66"
 
 # graaaah, workarounds
 

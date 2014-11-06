@@ -54,7 +54,8 @@ trap cleanup EXIT
 cd "${OSMOTETRA_DIR}"
 #rm -rf ${FIFO_TMP_DIR}
 for i in `seq 0 ${STREAMS}`; do
-	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${REC_TMP_DIR}/log${i}.txt" 2>&1 &
+#	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${REC_TMP_DIR}/log${i}.txt" 2>&1 & #DEBUG
+	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"/dev/null" 2>&1 &
 done
 
 start_demod
