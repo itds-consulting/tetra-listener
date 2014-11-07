@@ -39,8 +39,6 @@ TUNE_ATD_BW=1400000
 TUNE_ATD_LEVEL=4
 # arguments for osmo-sdr RX block, use rtl_tcp=<ADDR>:<PORT> for TCP source
 TUNE_OSMO_ARGS=""
-# automatically tune PPM to selected channel
-#AUTO_TUNE_CHANNEL=0
 
 # set to yes to enable debug logging
 #DEBUG=yes
