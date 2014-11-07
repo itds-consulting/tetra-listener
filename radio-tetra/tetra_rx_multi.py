@@ -15,6 +15,7 @@ from gnuradio.eng_option import eng_option
 from gnuradio.filter import firdes
 from gnuradio.filter import pfb
 from optparse import OptionParser
+import SimpleXMLRPCServer
 import math
 import osmosdr
 import threading
@@ -44,6 +45,14 @@ class tetra_rx_multi(gr.top_block):
         self.last_pwr = -100000
         self.atd_bw = options.atd_bw or srate_rx
         self.atd_level = options.atd_level
+
+        ##################################################
+        # RPC server
+        ##################################################
+        self.xmlrpc_server = SimpleXMLRPCServer.SimpleXMLRPCServer(
+                ("localhost", options.listen_port), allow_none=True)
+        self.xmlrpc_server.register_instance(self)
+        threading.Thread(target=self.xmlrpc_server.serve_forever).start()
 
         ##################################################
         # Rx Blocks and connections
@@ -242,6 +251,8 @@ class tetra_rx_multi(gr.top_block):
                 help="Bandwidth usefull for automatic threshold detection")
         parser.add_option("--atd-level", type="eng_float", default=None,
                 help="Signal strenght (above detected noise level) used as a level")
+        parser.add_option("-r", "--listen-port", type=int, default=60200,
+                help="Listen port for XML-RPC server")
 
         (options, args) = parser.parse_args()
         if len(args) != 0:
