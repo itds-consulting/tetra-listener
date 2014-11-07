@@ -139,49 +139,30 @@ class tetra_rx_multi(gr.top_block):
         ##################################################
         self.pwr_probes = []
         for ch in range(self.channels):
-            if ch >= self.channels / 2:
-                ch_ = (self.channels - ch - 1)
-            else:
-                ch_ = ch
-            if (float(ch_) / self.channels * 2) > (self.atd_bw / srate_rx):
-                self.pwr_probes.append(None)
-                continue
             pwr_probe = analog.probe_avg_mag_sqrd_c(0, 1./self.srate_channel)
             self.pwr_probes.append(pwr_probe)
             self.connect((self.pfb_channelizer_ccf, ch), (pwr_probe, 0))
-        def _pwr_probe():
+        def _atd_probe():
             while True:
                 time.sleep(2)
 
                 pwr = [10 * math.log10(p.level()) for p in self.pwr_probes if p is not None]
                 pwr = min(pwr) + self.atd_level
                 if abs(pwr - self.last_pwr) > (self.atd_level / 2):
+            #if ch >= self.channels / 2:
+            #    ch_ = (self.channels - ch - 1)
+            #else:
+            #    ch_ = ch
+            #if (float(ch_) / self.channels * 2) > (self.atd_bw / srate_rx):
+            #    self.pwr_probes.append(None)
+            #    continue
                     for s in self.squelch:
                         s.set_threshold(pwr)
                     self.last_pwr = pwr
         if options.atd_level is not None:
-            self._pwr_probe_thread = threading.Thread(target=_pwr_probe)
-            self._pwr_probe_thread.daemon = True
-            self._pwr_probe_thread.start()
-
-        ##################################################
-        # channel power probes - debugging only
-        ##################################################
-        def _probe():
-            while True:
-                time.sleep(1)
-
-                s = "PWR: "
-                for ch in self.pwr_probe_channels:
-                    probe = self.pwr_probes[ch]
-                    if probe is None:
-                        continue
-                    s += "%2.2f; " % (10 * math.log10(probe.level()))
-                print s
-        if self.pwr_probe_channels:
-            self._probe_thread = threading.Thread(target=_probe)
-            self._probe_thread.daemon = True
-            self._probe_thread.start()
+            self._atd_probe_thread = threading.Thread(target=_atd_probe)
+            self._atd_probe_thread.daemon = True
+            self._atd_probe_thread.start()
 
         ##################################################
         # AFC blocks and connections
@@ -223,6 +204,12 @@ class tetra_rx_multi(gr.top_block):
         self.srate_rx = srate_rx
         self.src.set_sample_rate(self.srate_rx)
         self.pfb_channelizer_ccf.set_taps((firdes.root_raised_cosine(1, self.srate_rx, 18000, 0.35, 1024)))
+
+    def get_channels_pwr(self, channels=None):
+        if channels is None:
+            channels = range(len(self.pwr_probes))
+        pwr = [((10 * math.log10(self.pwr_probes[ch].level())), ch) for ch in channels]
+        return pwr
 
     def get_options(self):
         parser = OptionParser(option_class=eng_option)

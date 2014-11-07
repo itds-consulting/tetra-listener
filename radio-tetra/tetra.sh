@@ -26,7 +26,6 @@ start_demod() {
 	echo "starting osmo-tetra." >&2
 	AUTO_TUNE_CHANNEL=${AUTO_TUNE_CHANNEL:+-t ${AUTO_TUNE_CHANNEL}}
 	DEBUG=${DEBUG:+-d}
-	DEBUG_CHENNELS_PWR=${DEBUG_CHENNELS_PWR:+--debug-channels-pwr ${DEBUG_CHENNELS_PWR}}
 	TUNE_PPM=${TUNE_PPM:+-p ${TUNE_PPM}}
 	TUNE_GAIN=${TUNE_GAIN:+-g ${TUNE_GAIN}}
 	TUNE_OSMO_ARGS=${TUNE_OSMO_ARGS:+-a ${TUNE_OSMO_ARGS}}
@@ -39,7 +38,6 @@ start_demod() {
 		${TUNE_OSMO_ARGS} \
 		${AUTO_TUNE_CHANNEL} \
 		${DEBUG} \
-		${DEBUG_CHENNELS_PWR} \
 		${TUNE_ATD_BW} \
 		${TUNE_ATD_LEVEL} \
 		-o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
