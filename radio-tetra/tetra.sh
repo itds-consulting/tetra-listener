@@ -30,6 +30,7 @@ start_demod() {
 	OSMO_SDR_ARGS=${OSMO_SDR_ARGS:+-a ${OSMO_SDR_ARGS}}
 	SIG_DETECTION_BW=${SIG_DETECTION_BW:+--sig-detection-bw ${SIG_DETECTION_BW}}
 	SIG_DETECTION_THRESHOLD=${SIG_DETECTION_THRESHOLD:+--sig-detection-threshold ${SIG_DETECTION_THRESHOLD}}
+	SAMPLE_RATE=${SAMPLE_RATE:+-s ${SAMPLE_RATE}}
 	${ROOT}/radio-tetra/tetra_rx_multi.py \
 		-f "${TUNE_FREQ}" \
 		${TUNE_PPM} \

@@ -31,6 +31,7 @@ STREAMS=72
 
 TUNE_FREQ=424e6
 TUNE_PPM=0
+SAMPLE_RATE=1.8e6
 # set gain, comment out for automatic gain setting
 #TUNE_GAIN=36
 # band width usefull for automatic squelch threshold detection
