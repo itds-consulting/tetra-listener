@@ -38,6 +38,8 @@ class tetra_rx_multi(gr.top_block):
         self.last_pwr = -100000
         self.sig_det_period = 1
         self.sig_det_bw = sig_det_bw = options.sig_detection_bw or srate_rx
+        if self.sig_det_bw <= 1.:
+            self.sig_det_bw *= srate_rx
         self.sig_det_threshold = options.sig_detection_threshold
         self.sig_det_channels = []
         for ch in range(self.channels):
@@ -260,7 +262,7 @@ class tetra_rx_multi(gr.top_block):
         parser.add_option("-t", "--auto-tune", type=int, default=None,
                 help="Enable automatic PPM corection based on channel N")
         parser.add_option("--sig-detection-bw", type="eng_float", default=None,
-                help="Band width used for detection of noise level")
+                help="Band width used for detection of noise level, values <= 1. are interpreted as a fraction of sample rate.")
         parser.add_option("--sig-detection-threshold", type="eng_float", default=6,
                 help="Signal strenght (above noise) when channel decoding starts")
         parser.add_option("-l", "--listen-port", type=int, default=60200,
