@@ -1,9 +1,4 @@
 #!/usr/bin/env python2.7
-##################################################
-# Gnuradio Python Flow Graph
-# Title: Tetra Rx Multi
-# Generated: Fri Oct 10 01:07:47 2014
-##################################################
 
 from gnuradio import analog
 from gnuradio import blocks
@@ -41,18 +36,17 @@ class tetra_rx_multi(gr.top_block):
         self.afc_ppm_step = options.frequency / 1.e6
         self.debug = options.debug
         self.last_pwr = -100000
-        self.atd_period = 10
-        self.atd_bw = options.atd_bw or srate_rx
-        self.atd_level = options.atd_level
-        self.atd_channels = []
-        atd_bw = options.atd_bw or srate_rx
+        self.sig_det_period = 1
+        self.sig_det_bw = sig_det_bw = options.sig_detection_bw or srate_rx
+        self.sig_det_threshold = options.sig_detection_threshold
+        self.sig_det_channels = []
         for ch in range(self.channels):
             if ch >= self.channels / 2:
                 ch_ = (self.channels - ch - 1)
             else:
                 ch_ = ch
-            if (float(ch_) / self.channels * 2) <= (self.atd_bw / srate_rx):
-                self.atd_channels.append(ch)
+            if (float(ch_) / self.channels * 2) <= (self.sig_det_bw / srate_rx):
+                self.sig_det_channels.append(ch)
 
         ##################################################
         # RPC server
@@ -150,23 +144,25 @@ class tetra_rx_multi(gr.top_block):
             pwr_probe = analog.probe_avg_mag_sqrd_c(0, 1./self.srate_channel)
             self.pwr_probes.append(pwr_probe)
             self.connect((self.channelizer, ch), (pwr_probe, 0))
-        def _atd_probe():
-            time.sleep(1)
+        def _sig_det_probe():
             while True:
-                pwr = [10 * math.log10(self.pwr_probes[ch].level())
+                pwr = [self.pwr_probes[ch].level()
                         for ch in range(self.channels)
-                        if ch in self.atd_channels]
-                pwr = min(pwr) + self.atd_level
-                if abs(pwr - self.last_pwr) > (self.atd_level / 2):
+                        if ch in self.sig_det_channels]
+                pwr = [10 * math.log10(p) for p in pwr if p > 0.]
+                if not pwr:
+                    continue
+                pwr = min(pwr) + self.sig_det_threshold
+                if abs(pwr - self.last_pwr) > (self.sig_det_threshold / 2):
                     for s in self.squelch:
                         s.set_threshold(pwr)
                     self.last_pwr = pwr
-                time.sleep(self.atd_period)
+                time.sleep(self.sig_det_period)
 
-        if options.atd_level is not None:
-            self._atd_probe_thread = threading.Thread(target=_atd_probe)
-            self._atd_probe_thread.daemon = True
-            self._atd_probe_thread.start()
+        if self.sig_det_threshold is not None:
+            self._sig_det_probe_thread = threading.Thread(target=_sig_det_probe)
+            self._sig_det_probe_thread.daemon = True
+            self._sig_det_probe_thread.start()
 
         ##################################################
         # AFC blocks and connections
@@ -226,7 +222,14 @@ class tetra_rx_multi(gr.top_block):
     def get_channels_pwr(self, channels=None):
         if channels is None:
             channels = range(len(self.pwr_probes))
-        pwr = [((10 * math.log10(self.pwr_probes[ch].level())), ch) for ch in channels]
+        pwr = []
+        for ch in channels:
+            p = self.pwr_probes[ch].level()
+            if p > 0.:
+                p = 10 * math.log10(p)
+            else:
+                p = None
+            pwr.append((p, ch, ))
         return pwr
 
     def get_auto_tune(self):
@@ -244,23 +247,23 @@ class tetra_rx_multi(gr.top_block):
                 help="gr-osmosdr device arguments")
         parser.add_option("-d", "--debug", action="store_true", default=False,
                 help="Print out debug informations")
-        parser.add_option("-s", "--sample-rate", type="eng_float", default=1800000,
-                help="set receiver sample rate (default 1800000, must be multiple of 900000)")
         parser.add_option("-f", "--frequency", type="eng_float", default=394.4e6,
                 help="set receiver center frequency")
-        parser.add_option("-p", "--ppm", type="eng_float", default=0.,
-                help="Frequency correction as PPM")
         parser.add_option("-g", "--gain", type="eng_float", default=None,
                 help="set receiver gain")
+        parser.add_option("-p", "--ppm", type="eng_float", default=0.,
+                help="Frequency correction as PPM")
         parser.add_option("-o", "--output", type=str,
                 help="output URL (eg file:///<FILE_PATH> or udp://DST_IP:PORT, use %d for channel no.")
+        parser.add_option("-s", "--sample-rate", type="eng_float", default=1800000,
+                help="set receiver sample rate (default 1800000, must be multiple of 900000)")
         parser.add_option("-t", "--auto-tune", type=int, default=None,
                 help="Enable automatic PPM corection based on channel N")
-        parser.add_option("--atd-bw", type="eng_float", default=None,
-                help="Bandwidth usefull for automatic threshold detection")
-        parser.add_option("--atd-level", type="eng_float", default=6,
-                help="Signal strenght (above detected noise level) used as a level")
-        parser.add_option("-r", "--listen-port", type=int, default=60200,
+        parser.add_option("--sig-detection-bw", type="eng_float", default=None,
+                help="Band width used for detection of noise level")
+        parser.add_option("--sig-detection-threshold", type="eng_float", default=6,
+                help="Signal strenght (above noise) when channel decoding starts")
+        parser.add_option("-l", "--listen-port", type=int, default=60200,
                 help="Listen port for XML-RPC server")
 
         (options, args) = parser.parse_args()

@@ -12,7 +12,7 @@ git submodule update
 
   * install required dependencies
     * libosmocore
-    * gnuradio
+    * gnuradio (>=3.7.5)
     * gr-osmosdr
     * python3
 

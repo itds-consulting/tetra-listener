@@ -27,17 +27,17 @@ start_demod() {
 	DEBUG=${DEBUG:+-d}
 	TUNE_PPM=${TUNE_PPM:+-p ${TUNE_PPM}}
 	TUNE_GAIN=${TUNE_GAIN:+-g ${TUNE_GAIN}}
-	TUNE_OSMO_ARGS=${TUNE_OSMO_ARGS:+-a ${TUNE_OSMO_ARGS}}
-	TUNE_ATD_BW=${TUNE_ATD_BW:+--atd-bw ${TUNE_ATD_BW}}
-	TUNE_ATD_LEVEL=${TUNE_ATD_LEVEL:+--atd-level ${TUNE_ATD_LEVEL}}
+	OSMO_SDR_ARGS=${OSMO_SDR_ARGS:+-a ${OSMO_SDR_ARGS}}
+	SIG_DETECTION_BW=${SIG_DETECTION_BW:+--sig-detection-bw ${SIG_DETECTION_BW}}
+	SIG_DETECTION_THRESHOLD=${SIG_DETECTION_THRESHOLD:+--sig-detection-threshold ${SIG_DETECTION_THRESHOLD}}
 	${ROOT}/radio-tetra/tetra_rx_multi.py \
 		-f "${TUNE_FREQ}" \
 		${TUNE_PPM} \
 		${TUNE_GAIN} \
-		${TUNE_OSMO_ARGS} \
+		${OSMO_SDR_ARGS} \
 		${DEBUG} \
-		${TUNE_ATD_BW} \
-		${TUNE_ATD_LEVEL} \
+		${SIG_DETECTION_BW} \
+		${SIG_DETECTION_THRESHOLD} \
 		-o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
 	DEMOD_PID=$!
 }

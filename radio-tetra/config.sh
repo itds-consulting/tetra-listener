@@ -34,11 +34,11 @@ TUNE_PPM=0
 # set gain, comment out for automatic gain setting
 #TUNE_GAIN=36
 # band width usefull for automatic squelch threshold detection
-TUNE_ATD_BW=1400000
+SIGNAL_DETECTION_BW=1400000
 # therhold (above detected noise level) fot automatic squelch
-TUNE_ATD_LEVEL=4
+#SIG_DETECTION_THRESHOLD=4
 # arguments for osmo-sdr RX block, use rtl_tcp=<ADDR>:<PORT> for TCP source
-TUNE_OSMO_ARGS=""
+OSMO_SDR_ARGS=""
 
 # set to yes to enable debug logging
 #DEBUG=yes
