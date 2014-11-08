@@ -1,5 +1,8 @@
 Brmlab TETRA listener.
 
+This software is collection of tools which automates recieving and decoding
+audio from TETRA downlink channels.
+
 == build
   * clone this repository
   * update submdules
@@ -11,10 +14,15 @@ git submodule update
     * libosmocore
     * gnuradio
     * gr-osmosdr
+    * python3
 
-  * (download and) build tools
+  * (download and) build
 ./build
 
+== usage
   * edit config in file radio-tetra/config.sh
-  * execute radio-tetra/tetra.sh
+  * execute radio-tetra/tetra.sh to start reciever
+  * execute radio-tetra/tetra_cli_pwr.py to list singnal strenght on channels
+  * execute radio-tetra/tetra_cli_auto_tune.py N to allow automatic fine tunning
+    N should be channel with good signal-strenght ration
 
