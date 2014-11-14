@@ -8,6 +8,7 @@ from gnuradio import eng_notation
 from gnuradio import gr
 from gnuradio.eng_option import eng_option
 from gnuradio.filter import firdes
+from gnuradio.filter import freq_xlating_fft_filter_ccc
 from gnuradio.filter import pfb
 from grc_gnuradio import blks2 as grc_blks2
 from optparse import OptionParser
@@ -33,7 +34,7 @@ class tetra_rx_multi(gr.top_block):
         self.afc_period = 5
         self.afc_gain = 1.
         self.afc_channel = options.auto_tune or -1
-        self.afc_ppm_step = options.frequency / 1.e6
+        self.afc_ppm_step = 100
         self.debug = options.debug
         self.last_pwr = -100000
         self.sig_det_period = 1
@@ -76,6 +77,8 @@ class tetra_rx_multi(gr.top_block):
         out_type, dst_path = options.output.split("://", 1)
         if out_type == "udp":
             dst_ip, dst_port = dst_path.split(':', 1)
+
+        self.freq_xlating = freq_xlating_fft_filter_ccc(1, (1, ), 0, srate_rx)
 
         self.channelizer = pfb.channelizer_ccf(
               self.channels,
@@ -136,7 +139,10 @@ class tetra_rx_multi(gr.top_block):
             self.unpack_k_bits.append(unpack_k_bits)
             self.blocks_sink.append(sink)
 
-        self.connect((self.src, 0), (self.channelizer, 0))
+        self.connect(
+                (self.src, 0),
+                (self.freq_xlating, 0),
+                (self.channelizer, 0))
 
         ##################################################
         # signal strenght identification
@@ -182,23 +188,19 @@ class tetra_rx_multi(gr.top_block):
         self.afc_avg = blocks.moving_average_ff(samp_afc, 1./samp_afc*self.afc_gain)
         self.afc_probe = blocks.probe_signal_f()
 
-        def _afc_error_probe():
+        def _afc_probe():
             while True:
                 time.sleep(self.afc_period)
                 if self.afc_channel == -1:
                     continue
                 err = self.afc_probe.level()
-                if err > self.afc_ppm_step:
-                    d = -1
-                elif err < -self.afc_ppm_step:
-                    d = 1
-                else:
+                if abs(err) < self.afc_ppm_step:
                     continue
-                ppm = self.src.get_freq_corr() + d
+                freq = self.freq_xlating.center_freq + err * self.afc_gain
                 if self.debug:
-                    print "PPM: % 4d err: %f" % (ppm, err, )
-                self.src.set_freq_corr(ppm)
-        self._afc_err_thread = threading.Thread(target=_afc_error_probe)
+                    print "err: %f\tfreq: %f" % (err, freq, )
+                self.freq_xlating.set_center_freq(freq)
+        self._afc_err_thread = threading.Thread(target=_afc_probe)
         self._afc_err_thread.daemon = True
         self._afc_err_thread.start()
 

@@ -9,6 +9,6 @@ import sys
 
 c = client.Server("http://localhost:60200")
 if len(sys.argv) == 2:
-    c.set_auto_tune([int(sys.argv[1])])
+    c.set_auto_tune(int(sys.argv[1]))
 else:
     print(c.get_auto_tune())
