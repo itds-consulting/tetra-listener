@@ -161,6 +161,7 @@ class tetra_rx_multi(gr.top_block):
                 if not pwr:
                     continue
                 pwr = min(pwr) + self.sig_det_threshold
+                print "Power level for squelch % 5.1f" % pwr
                 if abs(pwr - self.last_pwr) > (self.sig_det_threshold / 2):
                     for s in self.squelch:
                         s.set_threshold(pwr)
