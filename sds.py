@@ -126,7 +126,7 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur):
         llc_pdu_type = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 4], 2)
         tmsdu_idx += 4
 
-        if llc_pdu_type != 1 and llc_pdu_type != 5:
+        if llc_pdu_type != 1 and llc_pdu_type != 5 and llc_pdu_type != 2 and llc_pdu_type != 6:
             l("Err: PARSER_RETURN_WRONG_LLC_PDU_TYPE: " + str(llc_pdu_type), "SDS")
             return
 
@@ -139,7 +139,8 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur):
         sqll[10] = llc_pdu_type
         l("LLC_PDU_TYPE: " + str(llc_pdu_type), "SDS")
 
-        tmsdu_idx += 1
+        if llc_pdu_type == 1 or llc_pdu_type == 5:
+            tmsdu_idx += 1
 
         # START TL-SDU SECTION
 
