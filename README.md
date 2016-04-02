@@ -43,6 +43,11 @@ Try tuning your SDR using two steps:
 
 This means your machine cannot correctly decode all the TETRA streams, try lowering `STREAMS` in `radio-tetra/config.sh`
 
+### `tshark died` appears when running `sds-parser.py`
+
+Probable cause is that tshark doesn't support used filter params.
+Try editing file `config.py`, disabling the default `tshark_pipe` variable, and enabling the other one (which has _element suffixes to filter element names) 
+
 ## Tip
 
   - You can grep output of `sds-parser.py` for lines containing ASCII output, to search for text data
