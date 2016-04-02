@@ -5,8 +5,10 @@ from multiframe import stripFillingBin
 from libdeka import mylog as l
 import time
 
+def parsesds(in_bitsteram, in_ch, in_ts, in_mf, cur):
+    return parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, 1)
 
-def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur):
+def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
     global dsds_data_user_data, dsds_data_user_data, mac_address
     l("\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", "SDS")
 
@@ -367,5 +369,6 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur):
     else:
         l("Err: PARSER_RETURN_WRONG_MAC_PDU_TYPE: " + str(mac_pdu_type), "SDS")
 
-    cur.execute('INSERT INTO sds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    if db_commit != 0:
+        cur.execute('INSERT INTO sds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 tuple(sqll))

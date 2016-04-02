@@ -43,3 +43,15 @@ def hexFromBites(in_stream):
         bytetmp = int(in_stream[x * 8:(x * 8) + 8], 2)
         outhex = outhex + format(bytetmp, '02X') + ":"
     return outhex
+
+def bitesFromHex(in_hex):
+    """ "0A:FF:10:AA:12" -> "0000101011111111000100001010101000010010" """
+    outbin = ""
+    if in_hex[0] == ":":
+        in_hex = in_hex[1:]
+    if len(in_hex) % 3 != 0:
+        in_hex += ":"
+    for x in xrange(0, len(in_hex) // 3):
+        hex_chunk = in_hex[x * 3:(x * 3) + 2]
+        outbin = outbin + hex_to_binary(hex_chunk)
+    return outbin
