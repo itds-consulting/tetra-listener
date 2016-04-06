@@ -5,8 +5,11 @@ from multiframe import stripFillingBin
 from libdeka import mylog as l
 import time
 
-def parsesds(in_bitsteram, in_ch, in_ts, in_mf, cur):
-    return parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, 1)
+def parsesds_safe(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
+    try:
+        parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit)
+    except:
+        print "SDS Parser failed, bitstream corrupted or unsupported", sys.exc_info()[0]
 
 def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
     global dsds_data_user_data, dsds_data_user_data, mac_address

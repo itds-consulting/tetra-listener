@@ -13,7 +13,7 @@ import signal
 
 from binman import *
 from multiframe import *
-from sds import parsesds
+from sds import parsesds, parsesds_safe
 from dbo import create_schema
 
 from libdeka import setloglevel, mylog as l
@@ -244,7 +244,7 @@ while True:
 
     if InMacType == Fragtype.MAC_SINGLE:
         # This is not a multiframe -> parse immediately
-        parsesds(hex_to_binary(payload), arfcn, timeslot, 0, cur)
+        parsesds_safe(hex_to_binary(payload), arfcn, timeslot, 0, cur, 1)
 
     if InMacType == Fragtype.MAC_START:
         # This is the first frame of a multiframe
@@ -317,7 +317,7 @@ while True:
         for frm in reversed(multiframes[key]):
             tmsdu = frm.data + tmsdu
 
-        parsesds(tmsdu, arfcn, timeslot, 1, cur)
+        parsesds_safe(tmsdu, arfcn, timeslot, 1, cur, 1)
         del (multiframes[key])
 
     mlock.release()
