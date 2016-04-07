@@ -4,6 +4,7 @@ from binman import *
 from multiframe import stripFillingBin
 from libdeka import mylog as l
 import time
+import sys
 
 def parsesds_safe(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
     try:
