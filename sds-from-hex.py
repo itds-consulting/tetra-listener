@@ -2,7 +2,7 @@
 
 import sys
 from binman import *
-from sds import parsesds
+from sds import parsesds_safe, parsesds
 
 if len(sys.argv) != 2:
     print "Usage: %s <sds in RAW hex format, such as 20:C9:00:00:65:04:9E:FF:FF:F0>" % sys.argv[0]
@@ -12,4 +12,4 @@ bin_stream = bitesFromHex(sys.argv[1])
 
 print "BIN> " + bin_stream
 
-print parsesds(bin_stream, 0, 0, 0, 0, 0)
+parsesds(bin_stream, 0, 0, 0, 0, 0)

@@ -132,11 +132,11 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         llc_pdu_type = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 4], 2)
         tmsdu_idx += 4
 
-        if llc_pdu_type != 1 and llc_pdu_type != 5 and llc_pdu_type != 2 and llc_pdu_type != 6:
+        if llc_pdu_type not in [0,1,2,3,4,5,6,7]:
             l("Err: PARSER_RETURN_WRONG_LLC_PDU_TYPE: " + str(llc_pdu_type), "SDS")
             return
 
-        if llc_pdu_type == 5:
+        if llc_pdu_type in [4,5,6,7]:
             llc_fcs = int(tmsdu_bitstream[tmsdu_length - 32:tmsdu_length], 2)
             tmsdu_bitstream = tmsdu_bitstream[:-32]
             sqll[9] = llc_fcs
@@ -145,8 +145,11 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         sqll[10] = llc_pdu_type
         l("LLC_PDU_TYPE: " + str(llc_pdu_type), "SDS")
 
-        if llc_pdu_type == 1 or llc_pdu_type == 5:
+        if llc_pdu_type in [1,3,5,7]:
             tmsdu_idx += 1
+
+        if llc_pdu_type in [0,4]:
+            tmsdu_idx += 2
 
         # START TL-SDU SECTION
 
@@ -176,7 +179,9 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         sqll[13] = dsds_data_calling_party_type_identifier
         l("DSDS_DATA_PDU_Calling_party_type_identifier: " + str(dsds_data_calling_party_type_identifier), "SDS")
 
-        if dsds_data_calling_party_type_identifier == 1:
+        # Guess CPTI==3 is the same as 1 on some networks
+        # see Table 14.43: Calling party type identifier information element contents
+        if dsds_data_calling_party_type_identifier in [1,3]:
             dsds_data_address_ssi = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 24], 2)
             tmsdu_idx += 24
             dsds_data_address_extension = None
@@ -201,6 +206,7 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         sqll[16] = dsds_data_short_data_type_identifier
         l("DSDS_DATA_PDU_SHORT_DATA_TYPE: " + str(dsds_data_short_data_type_identifier), "SDS")
 
+        dsds_data_length_indicator = 0
         if dsds_data_short_data_type_identifier == 0:
             dsds_data_user_data = tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 16]
             tmsdu_idx += 16
@@ -214,23 +220,23 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
             dsds_data_length_indicator = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 11], 2)
             tmsdu_idx += 11
             l("DSDS_DATA_USER_LENGTH_INDICATOR: " + str(dsds_data_length_indicator), "SDS")
-
-            hexa = hexFromBites(tmsdu_bitstream[tmsdu_idx:])
-            asc = strFromBites(tmsdu_bitstream[tmsdu_idx:])
-            sqll[17] = hexa
-            sqll[18] = asc
-            l("Debug: D-SDS-DATA RAW: " + asc, "SDS")
-            l("Debug: D-SDS-DATA RAW: " + hexa, "SDS")
             dsds_data_user_data = tmsdu_bitstream[tmsdu_idx:tmsdu_idx + dsds_data_length_indicator]
             if len(dsds_data_user_data) < dsds_data_length_indicator:
                 l("Err: INVALID D-SDS USER DATA SIZE (INCOMPLETE): " + str(dsds_data_length_indicator) + " / " + str(
                     len(dsds_data_user_data)), "SDS")
             l("Debug: D-SDS-DATA BY LEN INDICATOR: " + strFromBites(dsds_data_user_data), "SDS")
 
-        if dsds_data_short_data_type_identifier == 0 or dsds_data_short_data_type_identifier == 1 or dsds_data_short_data_type_identifier == 2:
-            return
+        hexa = hexFromBites(dsds_data_user_data)
+        asc = strFromBites(dsds_data_user_data)
+        sqll[17] = hexa
+        sqll[18] = asc
+        l("Debug: D-SDS-DATA RAW: " + asc, "SDS")
+        l("Debug: D-SDS-DATA RAW: " + hexa, "SDS")
 
-        # STRAT OF SDS-TL SECTION
+        #if dsds_data_short_data_type_identifier == 0 or dsds_data_short_data_type_identifier == 1 or dsds_data_short_data_type_identifier == 2:
+        #    return
+
+        # START OF SDS-TL SECTION
 
         sdst4_idx = 0
         sdst4_bitstream = dsds_data_user_data
@@ -241,8 +247,9 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         sqll[19] = sdst4_protocol_identifier
         l("SDS_TYPE_4_PROTOCOL_INDENTIFIER: " + str(sdst4_protocol_identifier), "SDS")
 
-        if 192 <= sdst4_protocol_identifier <= 255 or sdst4_protocol_identifier == 130:
-            l("SDS-TL MESAGE", "SDS")
+        # Table 29.21: Protocol identifier information element contents
+        if 139 <= sdst4_protocol_identifier <= 255 or 128 <= sdst4_protocol_identifier <= 137:
+            l("SDS-TL MESSAGE", "SDS")
             sdst4_message_type = int(sdst4_bitstream[sdst4_idx:sdst4_idx + 4], 2)
             sdst4_idx += 4
             sqll[20] = sdst4_message_type
@@ -365,8 +372,17 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
                 l("SDS T4 REPORT USER DATA HEX: " + user_data_hex, "SDS")
 
                 l("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", "SDS")
+            elif sdst4_message_type == 2:
+                sdst4_idx += 4 # Table 29.11: SDS-ACK PDU contents
+                l("SDS-ACK", "SDS")
+                sdst4_ack_delivery_status = sdst4_bitstream[sdst4_idx:sdst4_idx+8]
+                sdst4_idx += 8
+                sdst4_ack_message_reference = sdst4_bitstream[sdst4_idx:sdst4_idx+8]
+                l("SDS-ACK DELIVERY STATUS" + str(sdst4_ack_delivery_status), "SDS")
+                l("SDS-ACK MESSAGE REFERENCE" + str(sdst4_ack_message_reference), "SDS")
             else:
                 l("Err: PARSER_RETURN_UNSUPPORTED_SDST4_(SDS-TL)_MESSAGE_TYPE: " + str(sdst4_message_type), "SDS")
+                l("Err: see \"Table 29.20: Message type information element contents\" for more info", "SDS")
         else:
             l("MESSAGE IS NOT SDS-TL", "SDS")
 
