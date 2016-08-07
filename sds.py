@@ -242,7 +242,7 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         #if dsds_data_short_data_type_identifier == 0 or dsds_data_short_data_type_identifier == 1 or dsds_data_short_data_type_identifier == 2:
         #    return
 
-        fcs_end_idx = (mac_idx + tmsdu_idx + dsds_data_length_indicator)
+        fcs_end_idx = (mac_idx + tmsdu_idx + len(dsds_data_user_data))
         if has_fcs:
             llc_fcs = in_bitstream[fcs_end_idx+1:fcs_end_idx+33]
             fcs_extracted = llc_fcs
