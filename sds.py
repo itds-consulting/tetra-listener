@@ -18,6 +18,7 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
     fcs_start_idx = 0
     fcs_end_idx = 0
     fcs_extracted = None
+    has_fcs = False
     l("\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", "SDS")
 
     sqll = [None] * 37
@@ -142,13 +143,7 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
             return
 
         if llc_pdu_type in [4,5,6,7]:
-            llc_fcs = tmsdu_bitstream[tmsdu_length - 48:tmsdu_length - 16]
-            fcs_extracted = llc_fcs
-            llc_fcs_hex = hex(int(llc_fcs,2))
-            tmsdu_bitstream = tmsdu_bitstream[:-32]
-            sqll[9] = llc_fcs
-            l("LLC_FCS: " + str(llc_fcs), "SDS")
-            l("LLC_FCS(hex):" + str(llc_fcs_hex), "SDS")
+            has_fcs = True
 
         sqll[10] = llc_pdu_type
         l("LLC_PDU_TYPE: " + str(llc_pdu_type), "SDS")
@@ -167,11 +162,13 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
 
         sqll[11] = mle_protocol_discriminator
         l("MLE_PROTOCOL_DISCRIMINATOR: " + str(mle_protocol_discriminator), "SDS")
+        # See table 18.33: Protocol discriminator information element
 
         if mle_protocol_discriminator != 2:
             l("Err: PARSER_RETURN_WRONG_MLE_PROTOCOL_DISCIMINATOR: " + str(mle_protocol_discriminator), "SDS")
             return
 
+        # See Table 14.66: PDU type information element contents for CMCE PDU Type
         cmce_pdu_type = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 5], 2)
         tmsdu_idx += 5
 
@@ -245,7 +242,18 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         #if dsds_data_short_data_type_identifier == 0 or dsds_data_short_data_type_identifier == 1 or dsds_data_short_data_type_identifier == 2:
         #    return
 
-        fcs_end_idx = (mac_idx + tmsdu_idx + len(dsds_data_user_data))
+        fcs_end_idx = (mac_idx + tmsdu_idx + dsds_data_length_indicator)
+        if has_fcs:
+            llc_fcs = in_bitstream[fcs_end_idx+1:fcs_end_idx+33]
+            fcs_extracted = llc_fcs
+            llc_fcs_hex = hex(int(llc_fcs,2))
+            tmsdu_bitstream = tmsdu_bitstream[:-32]
+            sqll[9] = llc_fcs
+            l("LLC_FCS: " + str(llc_fcs), "SDS")
+            l("LLC_FCS(hex):" + str(llc_fcs_hex), "SDS")
+
+        if len(in_bitstream) > fcs_end_idx+33:
+            l("WARN: REMAINING DATA: " + str(in_bitstream[fcs_end_idx+33:]), "SDS")
         # START OF SDS-TL SECTION
 
         sdst4_idx = 0
@@ -292,6 +300,7 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
                         if number_of_digits % 2 == 1:
                             sdst4_idx += 4
 
+                # Text Messaging, see table 29.21
                 if sdst4_protocol_identifier == 130:
                     text_message_timestamp_used = int(sdst4_bitstream[sdst4_idx:sdst4_idx + 1], 2)
                     sdst4_idx += 1
