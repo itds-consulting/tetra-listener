@@ -5,24 +5,11 @@ audio from TETRA downlink channels.
 
 == build
   * clone this repository
-  * update submdules
+  * update submodules
 
 git submodule init
 git submodule update
 
-  * install required dependencies
-    * libosmocore
-    * gnuradio (>=3.7.5)
-    * gr-osmosdr
-    * python3
-
   * (download and) build
-./build
-
-== usage
-  * edit config in file radio-tetra/config.sh
-  * execute radio-tetra/tetra.sh to start reciever
-  * execute radio-tetra/tetra_cli_pwr.py to list singnal strenght on channels
-  * execute radio-tetra/tetra_cli_auto_tune.py N to allow automatic fine tunning
-    N should be channel with good signal-strenght ration
+./build.sh
 
