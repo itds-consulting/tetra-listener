@@ -13,3 +13,4 @@ git submodule update
   * (download and) build
 ./build.sh
 
+  * on armel (and probably other architectures) you have to remove -m32 from the codec makefile
