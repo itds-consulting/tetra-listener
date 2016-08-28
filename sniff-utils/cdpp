@@ -1,0 +1,19 @@
+#!/bin/bash
+
+while true; do
+  files=`find . ! -executable -type f|sort`
+  if [ -z "$files" ]; then
+    sleep 1
+    echo -n .
+    continue
+  fi
+
+  echo -e "\e[1;32m"
+  ls -lh $files
+  echo -e "\e[0m"
+
+  f=`echo "$files" | head -n 1`
+
+  cdp $f
+  chmod u+x $f
+done
