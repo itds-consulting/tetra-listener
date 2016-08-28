@@ -37,7 +37,7 @@ class tetra_rx_multi(gr.top_block):
         self.afc_ppm_step = 100
         self.debug = options.debug
         self.last_pwr = -100000
-        self.sig_det_period = 1
+        self.sig_det_period = 10
         self.sig_det_bw = sig_det_bw = options.sig_detection_bw or srate_rx
         if self.sig_det_bw <= 1.:
             self.sig_det_bw *= srate_rx
@@ -108,6 +108,14 @@ class tetra_rx_multi(gr.top_block):
             map_bits = digital.map_bb(([3, 2, 0, 1, 3]))
             unpack_k_bits = blocks.unpack_k_bits_bb(2)
 
+            brmchannels = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71]
+            #brmchannels = [11,4,3,64,45,47,53,8,68,6,56,49,17,54,65,5,71,22,48,7,50] # itds kancl
+            #brmchannels = [23,13,40,69,59,7,42,54,5,14,4,56,45,46,67,55,66,44,71,49,31,57,0,65,70] # doma - dole
+            brmchannels = [23,13,59,40,69,7,49,60,42,70,4,50,66,67,3,14,57,33,46,22,68,32,39,24,6,12,43,58,48,17,5,56,65,29,54,30,16,52,53,41,47,2,34,44,8] # doma - strecha
+            #brmchannels = [67, 7, 23, 70] # doma - strecha - SDS
+            brmchannels = [67, 7, 23, 70,9,71,64,63,62,61,55,51,45,38,37,36,35,31,28,27,26,25,21,20,19,18,15,11,10,1,0] # doma - strecha - komplement
+
+
             if out_type == 'udp':
                 sink = blocks.udp_sink(gr.sizeof_gr_char, dst_ip, int(dst_port)+ch, 1472, True)
             elif out_type == 'file':
@@ -116,8 +124,9 @@ class tetra_rx_multi(gr.top_block):
             else:
                 raise ValueError("Invalid output URL '%s'" % options.output)
 
-            self.connect((self.channelizer, ch),
-                    (squelch, 0),
+            if ch in brmchannels:
+                self.connect((self.channelizer, ch),
+                    #(squelch, 0),
                     (mpsk, 0),
                     (diff_phasor, 0),
                     (complex_to_arg, 0),
@@ -127,6 +136,7 @@ class tetra_rx_multi(gr.top_block):
                     (map_bits, 0),
                     (unpack_k_bits, 0),
                     (sink, 0))
+
 
             self.squelch.append(squelch)
             self.digital_mpsk_receiver_cc.append(mpsk)
@@ -161,7 +171,7 @@ class tetra_rx_multi(gr.top_block):
                 if not pwr:
                     continue
                 pwr = min(pwr) + self.sig_det_threshold
-                print "Power level for squelch % 5.1f" % pwr
+                print "power threshold target %f"%pwr
                 if abs(pwr - self.last_pwr) > (self.sig_det_threshold / 2):
                     for s in self.squelch:
                         s.set_threshold(pwr)
@@ -198,9 +208,10 @@ class tetra_rx_multi(gr.top_block):
                 if abs(err) < self.afc_ppm_step:
                     continue
                 freq = self.freq_xlating.center_freq + err * self.afc_gain
-                if self.debug:
-                    print "err: %f\tfreq: %f" % (err, freq, )
+                print "err: %f\tfreq: %f" % (err, freq, )
                 self.freq_xlating.set_center_freq(freq)
+
+        self.afc_channel = 23
         self._afc_err_thread = threading.Thread(target=_afc_probe)
         self._afc_err_thread.daemon = True
         self._afc_err_thread.start()

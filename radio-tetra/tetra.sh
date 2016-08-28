@@ -31,7 +31,9 @@ start_demod() {
 	SIG_DETECTION_BW=${SIG_DETECTION_BW:+--sig-detection-bw ${SIG_DETECTION_BW}}
 	SIG_DETECTION_THRESHOLD=${SIG_DETECTION_THRESHOLD:+--sig-detection-threshold ${SIG_DETECTION_THRESHOLD}}
 	SAMPLE_RATE=${SAMPLE_RATE:+-s ${SAMPLE_RATE}}
-	${ROOT}/radio-tetra/tetra_rx_multi.py \
+	#~/fcl/examples/tetra.py \
+	export GR_SCHEDULER=STS
+	~/fcl/examples/tetra1.py \
 		-f "${TUNE_FREQ}" \
 		${TUNE_PPM} \
 		${TUNE_GAIN} \
@@ -41,18 +43,39 @@ start_demod() {
 		${SIG_DETECTION_THRESHOLD} \
 		-o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
 	DEMOD_PID=$!
+	sudo renice -n -5 -p $DEMOD_PID
+
+  export GR_SCHEDULER=STS
+  ~/fcl/examples/tetra2.py \
+    -f "${TUNE_FREQ}" \
+    ${TUNE_PPM} \
+    ${TUNE_GAIN} \
+    ${OSMO_SDR_ARGS} \
+    ${DEBUG} \
+    ${SIG_DETECTION_BW} \
+    ${SIG_DETECTION_THRESHOLD} \
+    -o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
+  DEMOD_PID=$!
+  sudo renice -n -5 -p $DEMOD_PID
+	
 }
 
 cleanup() {
 	kill ${DEMOD_PID}
 }
 
+mkdir -p /tmp/fifos/
+
 trap cleanup EXIT
 cd "${OSMOTETRA_DIR}"
 #rm -rf ${FIFO_TMP_DIR}
 for i in `seq 0 ${STREAMS}`; do
 #	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${REC_TMP_DIR}/log${i}.txt" 2>&1 & #DEBUG
-	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${FIFO_TMP_DIR}/log${i}.txt" 2>&1 &
+#	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${FIFO_TMP_DIR}/log${i}.txt" 2>&1 &
+#	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >/dev/null 2>&1 &
+        mkfifo /tmp/fifos/fifo$i
+        ./tetra-rx -a $i -t /tmp/fifos/fifo$i -d "${REC_TMP_DIR}/${i}" "${FIFO_TMP_DIR}/bits${i}" >/dev/null 2>&1 &
+
 done
 
 start_demod
@@ -85,17 +108,31 @@ while true; do
 		[ -z "${ssi}" ] && ssi="unknown"
 
 		#ssi="."
-		fn=`date --date="@${mtime}" "+%Y-%m-%d_%H-%M-%S"` # if it starts the same second, we don't care
+
+    tsn=`basename "$i" | cut -d "_" -f 3 | cut -d "." -f 1`
+
+		fn=`date --date="@${mtime}" "+%Y-%m-%d_%H-%M-%S_$tsn"` # if it starts the same second, we don't care
 		fpath="${REC_DIR}/${dir}/${ssi}"
+		fpath="${REC_DIR}/${dir}/unknown"
 		mkdir -p "${fpath}"
 
-		./cdecoder "$i" ${TMP_DIR}/traffic.cdata > /dev/null 2>&1
-		./sdecoder ${TMP_DIR}/traffic.cdata ${TMP_DIR}/traffic.raw  > /dev/null 2>&1
-		sox -q -r 8000 -e signed -b 16 -c 1 ${TMP_DIR}/traffic.raw "${fpath}/${fn}.${REC_FORMAT}"
+    echo "timeslot $tsn ssi $ssi"
 
-		mv "${i%%.out}.txt" "${fpath}/${fn}.txt"
+		./cdecoder "$i" ${TMP_DIR}/traffic.cdata > /dev/null 2>&1
+
+		c=`echo ${i} | cut -d "/" -f 6` # breaks when not in /home/user/
+		# FIXME not relative frequency
+		mkdir -p "${fpath}/codec/"
+		TNAME="${fpath}/codec/${fn}.o${c}.i${ssi}.${REC_FORMAT}"
+
+		cat ${TMP_DIR}/traffic.cdata | ~/gr-pack | bzip2 -9 > ${TNAME}
+		TNAME="${fpath}/${fn}.o${c}.ogg"
+		./sdecoder ${TMP_DIR}/traffic.cdata ${TMP_DIR}/traffic.raw  > /dev/null 2>&1
+		sox -q -r 8000 -e signed -b 16 -c 1 ${TMP_DIR}/traffic.raw "${fpath}/${fn}.o${c}.i${ssi}.ogg"
+
+		rm "${i%%.out}.txt" "${fpath}/${fn}.txt"
 		echo "created: ${fpath}/${fn}"
-		length=$(($(stat -c %s ${TMP_DIR}/traffic.raw)/16)) # in [ms]
+		#length=$(($(stat -c %s ${TMP_DIR}/traffic.raw)/16)) # in [ms]
 # WTF, where is the fucking file ???
 #		${ROOT}/add_group.py -i ${ssi} -t ${mtime} -l ${length}
 		rm "${i}"
