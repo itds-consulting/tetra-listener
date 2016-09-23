@@ -3,6 +3,7 @@
 from binman import *
 from multiframe import stripFillingBin
 from libdeka import mylog as l
+from fcs import Fcs_bitstring
 import time
 import sys
 
@@ -10,13 +11,17 @@ def parsesds_safe(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
     try:
         parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit)
     except:
-        print "SDS Parser failed, bitstream corrupted or unsupported", sys.exc_info()[0]
+        print "SDS Parser failed, bitstream corrupted or unsupported", sys.exc_info()
 
 def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
     global dsds_data_user_data, dsds_data_user_data, mac_address
+    fcs_start_idx = 0
+    fcs_end_idx = 0
+    fcs_extracted = None
+    has_fcs = False
     l("\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", "SDS")
 
-    sqll = [None] * 37
+    sqll = [None] * 38
 
     sqll[0] = time.time()
     sqll[1] = in_ch
@@ -36,6 +41,7 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
     mac_fill_bit_indication = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
     mac_idx = mac_idx + 1 + 4
 
+    # table 21.4.1 MAC PDU types
     if mac_pdu_type == 0:
         mac_length_indication = int(mac_bitstream[mac_idx:mac_idx + 6], 2)
         mac_idx += 6
@@ -137,10 +143,7 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
             return
 
         if llc_pdu_type in [4,5,6,7]:
-            llc_fcs = int(tmsdu_bitstream[tmsdu_length - 32:tmsdu_length], 2)
-            tmsdu_bitstream = tmsdu_bitstream[:-32]
-            sqll[9] = llc_fcs
-            l("LLC_FCS: " + str(llc_fcs), "SDS")
+            has_fcs = True
 
         sqll[10] = llc_pdu_type
         l("LLC_PDU_TYPE: " + str(llc_pdu_type), "SDS")
@@ -151,6 +154,7 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         if llc_pdu_type in [0,4]:
             tmsdu_idx += 2
 
+        fcs_start_idx = mac_idx + tmsdu_idx
         # START TL-SDU SECTION
 
         mle_protocol_discriminator = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 3], 2)
@@ -158,11 +162,13 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
 
         sqll[11] = mle_protocol_discriminator
         l("MLE_PROTOCOL_DISCRIMINATOR: " + str(mle_protocol_discriminator), "SDS")
+        # See table 18.33: Protocol discriminator information element
 
         if mle_protocol_discriminator != 2:
             l("Err: PARSER_RETURN_WRONG_MLE_PROTOCOL_DISCIMINATOR: " + str(mle_protocol_discriminator), "SDS")
             return
 
+        # See Table 14.66: PDU type information element contents for CMCE PDU Type
         cmce_pdu_type = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 5], 2)
         tmsdu_idx += 5
 
@@ -236,6 +242,18 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         #if dsds_data_short_data_type_identifier == 0 or dsds_data_short_data_type_identifier == 1 or dsds_data_short_data_type_identifier == 2:
         #    return
 
+        fcs_end_idx = (mac_idx + tmsdu_idx + len(dsds_data_user_data))
+        if has_fcs:
+            llc_fcs = in_bitstream[fcs_end_idx+1:fcs_end_idx+33]
+            fcs_extracted = llc_fcs
+            llc_fcs_hex = hex(int(llc_fcs,2))
+            tmsdu_bitstream = tmsdu_bitstream[:-32]
+            sqll[9] = llc_fcs
+            l("LLC_FCS: " + str(llc_fcs), "SDS")
+            l("LLC_FCS(hex):" + str(llc_fcs_hex), "SDS")
+
+        if len(in_bitstream) > fcs_end_idx+33:
+            l("WARN: REMAINING DATA: " + str(in_bitstream[fcs_end_idx+33:]), "SDS")
         # START OF SDS-TL SECTION
 
         sdst4_idx = 0
@@ -282,6 +300,7 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
                         if number_of_digits % 2 == 1:
                             sdst4_idx += 4
 
+                # Text Messaging, see table 29.21
                 if sdst4_protocol_identifier == 130:
                     text_message_timestamp_used = int(sdst4_bitstream[sdst4_idx:sdst4_idx + 1], 2)
                     sdst4_idx += 1
@@ -330,8 +349,6 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
                 if sdst4_transfer_user_data_len % 8 == 1:
                     l("Err: INVALID SDS T4 USER DATA SIZE (INCOMPLETE): " + str(sdst4_transfer_user_data_len), "SDS")
 
-                l("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", "SDS")
-
             elif sdst4_message_type == 1:
                 sdst4_report_acknowledgement_required = int(sdst4_bitstream[sdst4_idx:sdst4_idx + 1], 2)
                 sdst4_idx += 1
@@ -371,7 +388,6 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
                 l("SDS T4 REPORT USER DATA TXT: " + user_data_txt, "SDS")
                 l("SDS T4 REPORT USER DATA HEX: " + user_data_hex, "SDS")
 
-                l("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", "SDS")
             elif sdst4_message_type == 2:
                 sdst4_idx += 4 # Table 29.11: SDS-ACK PDU contents
                 l("SDS-ACK", "SDS")
@@ -386,9 +402,22 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         else:
             l("MESSAGE IS NOT SDS-TL", "SDS")
 
+        sqll[37] = 2
+        if fcs_extracted != None:
+            fcs_guess = Fcs_bitstring(in_bitstream[fcs_start_idx:fcs_end_idx])
+            if fcs_guess == fcs_extracted:
+                l("FCS MATCH", "SDS")
+                sqll[37] = 1
+            else:
+                l("FCS part range: %d:%d" % (fcs_start_idx, fcs_end_idx), "SDS")
+                l("FCS guess: " + str(Fcs_bitstring(in_bitstream[fcs_start_idx:fcs_end_idx])), "SDS")
+                l("FCS expec: " + fcs_extracted, "SDS")
+                sqll[37] = 0
+        l("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", "SDS")
+
     else:
         l("Err: PARSER_RETURN_WRONG_MAC_PDU_TYPE: " + str(mac_pdu_type), "SDS")
 
     if db_commit != 0:
-        cur.execute('INSERT INTO sds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        cur.execute('INSERT INTO sds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 tuple(sqll))

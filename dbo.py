@@ -37,4 +37,7 @@ def create_schema(cur):
     SDS_T4_REPORT_DELIVERY_STATUS INT,
     SDS_T4_REPORT_MESSAGE_REFERENCE INT,
     SDS_T4_REPORT_USER_DATA INT,
-    SDS_T4_REPORT_USER_DATA_ASCII_INDEX INT)""")
+    SDS_T4_REPORT_USER_DATA_ASCII_INDEX INT,
+    fcsok INT);""")
+
+    cur.execute("""create index if not exists timestamp_idx on sds (timestamp) ;""")
