@@ -1,3 +1,4 @@
+mkdir -p /tmp/fifos
 killall tetra-rx
 killall fcl
 killall tetra.sh
