@@ -1,7 +1,12 @@
 #!/bin/bash
 
+size="10"
+if [ -n "$1" ]; then
+  size="$1"
+fi
+
 while true; do
-  files=`find . ! -executable -type f|sort`
+  files=`find . ! -executable -type f -size +"$size"k -name "*.cdata.bz2" |sort`
   if [ -z "$files" ]; then
     sleep 1
     echo -n .
