@@ -78,3 +78,4 @@ newstr=${newstr#,}
 
 echo "Old FCL string: $3"
 echo "New FCL string: $newstr"
+echo "$newstr" > /tmp/tetra.scan

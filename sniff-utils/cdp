@@ -12,7 +12,7 @@ for f in $@; do
     cat "$f" | bzip2 -dc | gr-unpack > /tmp/traffic.cdata
     ~/radio/tetra-listener/codec/c-code/sdecoder /tmp/traffic.cdata /tmp/traffic.raw > /dev/null 2>&1
     sox -q -r 8000 -e signed -b 16 -c 1 /tmp/traffic.raw /tmp/traffic.wav
-    mplayer -speed 1.25 -af volume=3,volnorm=2:0.75 /tmp/traffic.wav
+    mplayer -speed 1 -af volume=3,volnorm=2:0.75 /tmp/traffic.wav
 
     #all="$dst $all"
 

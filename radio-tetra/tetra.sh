@@ -33,7 +33,7 @@ start_demod() {
 	SAMPLE_RATE=${SAMPLE_RATE:+-s ${SAMPLE_RATE}}
 	#~/fcl/examples/tetra.py \
 	export GR_SCHEDULER=STS
-	~/fcl/examples/tetra1.py \
+	~/fcl/examples/tetra.py \
 		-f "${TUNE_FREQ}" \
 		${TUNE_PPM} \
 		${TUNE_GAIN} \
@@ -45,19 +45,6 @@ start_demod() {
 	DEMOD_PID=$!
 	sudo renice -n -5 -p $DEMOD_PID
 
-  export GR_SCHEDULER=STS
-  ~/fcl/examples/tetra2.py \
-    -f "${TUNE_FREQ}" \
-    ${TUNE_PPM} \
-    ${TUNE_GAIN} \
-    ${OSMO_SDR_ARGS} \
-    ${DEBUG} \
-    ${SIG_DETECTION_BW} \
-    ${SIG_DETECTION_THRESHOLD} \
-    -o "file:///${FIFO_TMP_DIR}/bits%d" & 2>&1
-  DEMOD_PID=$!
-  sudo renice -n -5 -p $DEMOD_PID
-	
 }
 
 cleanup() {
@@ -125,7 +112,7 @@ while true; do
 		mkdir -p "${fpath}/codec/"
 		TNAME="${fpath}/codec/${fn}.o${c}.i${ssi}.${REC_FORMAT}"
 
-		cat ${TMP_DIR}/traffic.cdata | ~/gr-pack | bzip2 -9 > ${TNAME}
+		cat ${TMP_DIR}/traffic.cdata | gr-pack | bzip2 -9 > ${TNAME}
 		TNAME="${fpath}/${fn}.o${c}.ogg"
 		./sdecoder ${TMP_DIR}/traffic.cdata ${TMP_DIR}/traffic.raw  > /dev/null 2>&1
 		sox -q -r 8000 -e signed -b 16 -c 1 ${TMP_DIR}/traffic.raw "${fpath}/${fn}.o${c}.i${ssi}.ogg"
