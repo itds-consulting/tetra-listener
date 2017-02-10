@@ -43,6 +43,8 @@ echo
 
 meas=`echo "$meas" | nl -v 0 | LANG=C sort -nk 2 | cut -f 1 | tr -d " " | tac`
 
+nc=`echo "$meas" | wc -l`
+
 cc=`echo "$3" | tr "," "\n"`
 
 rangestart=0
@@ -63,6 +65,10 @@ for c in $cc; do
   while true; do
     rangestart=$(( $rangestart + 1 ))
     candidate=`echo "$meas" | head -n $rangestart | tail -n 1`
+    if [ $candidate -eq $(( $nc / 2 - 1)) -o $candidate -eq $(( $nc / 2 )) -o $candidate -eq $(( $nc / 2 + 1)) ]; then
+      echo "Skipping possible alias $candidate"
+      continue
+    fi
     if ! echo "$cc" | grep -qE "^$candidate$"; then
       break
     fi
