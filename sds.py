@@ -35,75 +35,121 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
     mac_bitstream = in_bitstream
     mac_idx = 0
 
-    mac_pdu_type = int(mac_bitstream[mac_idx:mac_idx + 2], 2)
-    mac_idx += 2
+    # MAC-ACCESS (SCH/HU)
+    if in_ts == 0:
+        mac_pdu_type = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
+        mac_idx += 1
 
-    mac_fill_bit_indication = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
-    mac_idx = mac_idx + 1 + 4
+        mac_fill_bit_indication = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
+        mac_idx += 2
+
+    # MAC-RESOURCE/MAC-DATA
+    else:
+        mac_pdu_type = int(mac_bitstream[mac_idx:mac_idx + 2], 2)
+        mac_idx += 2
+    
+        mac_fill_bit_indication = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
+        mac_idx = mac_idx + 1 + 4
 
     # table 21.4.1 MAC PDU types
     if mac_pdu_type == 0:
-        mac_length_indication = int(mac_bitstream[mac_idx:mac_idx + 6], 2)
-        mac_idx += 6
-        mac_address_type = int(mac_bitstream[mac_idx:mac_idx + 3], 2)
-        mac_idx += 3
-        if mac_address_type == 1:
-            mac_address = int(mac_bitstream[mac_idx:mac_idx + 24], 2)
-            mac_idx += 24
-        elif mac_address_type == 2:
-            mac_address = int(mac_bitstream[mac_idx:mac_idx + 10], 2)
-            mac_idx += 10
-        elif mac_address_type == 3:
-            mac_address = int(mac_bitstream[mac_idx:mac_idx + 24], 2)
-            mac_idx += 24
-        elif mac_address_type == 4:
-            mac_address = int(mac_bitstream[mac_idx:mac_idx + 24], 2)
-            mac_idx += 24
-        elif mac_address_type == 5:
-            mac_address = int(mac_bitstream[mac_idx:mac_idx + 34], 2)
-            mac_idx += 34
-        elif mac_address_type == 6:
-            mac_address = int(mac_bitstream[mac_idx:mac_idx + 30], 2)
-            mac_idx += 30
-        elif mac_address_type == 7:
-            mac_address = int(mac_bitstream[mac_idx:mac_idx + 34], 2)
-            mac_idx += 34
+        mac_length_indication = 0
+        # MAC-ACCESS (SCH/HU)
+        if in_ts == 0:
+            mac_address_type = int(mac_bitstream[mac_idx:mac_idx + 2], 2)
+            mac_idx += 2
+            if mac_address_type == 0:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 24], 2)
+                mac_idx += 24
+            if mac_address_type == 1:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 10], 2)
+                mac_idx += 10
+            if mac_address_type == 2:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 24], 2)
+                mac_idx += 24
+            if mac_address_type == 3:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 24], 2)
+                mac_idx += 24
 
-        mac_power_control_flag = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
-        mac_idx += 1
-
-        if mac_power_control_flag == 1:
-            mac_idx += 4
-        else:
-            pass
-
-        mac_slot_granting_flag = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
-        mac_idx += 1
-
-        if mac_slot_granting_flag == 1:
-            mac_idx += 8
-        else:
-            pass
-
-        mac_channel_allocation_flag = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
-        mac_idx += 1
-
-        sqll[5] = mac_channel_allocation_flag
-        l("MAC_PDU_CHANNEL_ALLOCATION_FLAG: " + str(mac_channel_allocation_flag), "SDS")
-
-        if mac_channel_allocation_flag == 1:
-            # CHANNEL ALLOCATION INFORMATION ELEMENT NOT IMPLEMENTED NOW, ONLY SHIFTING
-            mac_idx += 22
-
-            if int(mac_bitstream[mac_idx:mac_idx + 1], 2) == 1:
-                mac_idx = mac_idx + 1 + 10
-            else:
+            opt_flag = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
+            mac_idx += 1
+            if opt_flag == 1:
+                cap_req = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
                 mac_idx += 1
-
-            if int(mac_bitstream[mac_idx:mac_idx + 2], 2) == 0:
-                mac_idx = mac_idx + 2 + 2
+                if cap_req == 0:
+                    mac_length_indication = int(mac_bitstream[mac_idx:mac_idx + 5], 2)
+                    mac_idx += 5
+                elif cap_req == 1:
+                    frag_flag = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
+                    mac_idx += 1
+                    res_req = int(mac_bitstream[mac_idx:mac_idx + 4], 2)
+                    mac_idx += 4
+                    mac_length_indication = 63
+                    l("MAC_PDU_FRAGMENTATION_FLAG: " + str(frag_flag), "SDS")
+                    l("MAC_PDU_RESERVATION_REQUIREMENT: " + str(res_req), "SDS")
+        # MAC-RESOURCE/MAC-DATA
+        else:
+            mac_length_indication = int(mac_bitstream[mac_idx:mac_idx + 6], 2)
+            mac_idx += 6
+            mac_address_type = int(mac_bitstream[mac_idx:mac_idx + 3], 2)
+            mac_idx += 3
+            if mac_address_type == 1:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 24], 2)
+                mac_idx += 24
+            elif mac_address_type == 2:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 10], 2)
+                mac_idx += 10
+            elif mac_address_type == 3:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 24], 2)
+                mac_idx += 24
+            elif mac_address_type == 4:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 24], 2)
+                mac_idx += 24
+            elif mac_address_type == 5:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 34], 2)
+                mac_idx += 34
+            elif mac_address_type == 6:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 30], 2)
+                mac_idx += 30
+            elif mac_address_type == 7:
+                mac_address = int(mac_bitstream[mac_idx:mac_idx + 34], 2)
+                mac_idx += 34
+    
+            mac_power_control_flag = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
+            mac_idx += 1
+    
+            if mac_power_control_flag == 1:
+                mac_idx += 4
             else:
-                mac_idx += 2
+                pass
+    
+            mac_slot_granting_flag = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
+            mac_idx += 1
+    
+            if mac_slot_granting_flag == 1:
+                mac_idx += 8
+            else:
+                pass
+    
+            mac_channel_allocation_flag = int(mac_bitstream[mac_idx:mac_idx + 1], 2)
+            mac_idx += 1
+    
+            sqll[5] = mac_channel_allocation_flag
+            l("MAC_PDU_CHANNEL_ALLOCATION_FLAG: " + str(mac_channel_allocation_flag), "SDS")
+    
+            if mac_channel_allocation_flag == 1:
+                # CHANNEL ALLOCATION INFORMATION ELEMENT NOT IMPLEMENTED NOW, ONLY SHIFTING
+                mac_idx += 22
+    
+                if int(mac_bitstream[mac_idx:mac_idx + 1], 2) == 1:
+                    mac_idx = mac_idx + 1 + 10
+                else:
+                    mac_idx += 1
+    
+                if int(mac_bitstream[mac_idx:mac_idx + 2], 2) == 0:
+                    mac_idx = mac_idx + 2 + 2
+                else:
+                    mac_idx += 2
 
         sqll[6] = mac_pdu_type
         sqll[7] = mac_fill_bit_indication
@@ -112,7 +158,11 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
         l("MAC_PDU_TYPE: " + str(mac_pdu_type), "SDS")
         l("MAC_FILL_BIT_INDICATION: " + str(mac_fill_bit_indication), "SDS")
         l("MAC_PDU_LENGTH: " + str(mac_length_indication), "SDS")
-        l("MAC_PDU_ADDRESS: " + str(mac_address) + " (TO)", "SDS")
+        if in_ts == 0:
+            addr_type = "FROM"
+        else:
+            addr_type = "TO"
+        l("MAC_PDU_ADDRESS: " + str(mac_address) + " (" + addr_type + ")", "SDS")
 
         if 34 >= mac_length_indication >= 4:
             tmsdu_length = (mac_length_indication * 8) - mac_idx
@@ -179,6 +229,10 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
             l("Err: PARSER_RETURN_WRONG_CMCE_PDU_TYPE: " + str(cmce_pdu_type), "SDS")
             return
 
+        # Skip Area selection on U-SDS-DATA
+        if in_ts == 0:
+            tmsdu_idx += 4
+
         dsds_data_calling_party_type_identifier = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 2], 2)
         tmsdu_idx += 2
 
@@ -196,6 +250,10 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
             tmsdu_idx += 24
             dsds_data_address_extension = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 24], 2)
             tmsdu_idx += 24
+        elif dsds_data_calling_party_type_identifier == 0 and in_ts == 0:
+            dsds_data_address_ssi = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 8], 2)
+            tmsdu_idx += 8
+            dsds_data_address_extension = None
         else:
             l("Err: PARSER_RETURN_WRONG_DSDS_DATA_CALLING_PARTY_TYPE_IDENTIFIER: " + str(
                 dsds_data_calling_party_type_identifier), "SDS")
@@ -203,7 +261,11 @@ def parsesds(in_bitstream, in_ch, in_ts, in_mf, cur, db_commit):
 
         sqll[14] = dsds_data_address_ssi
         sqll[15] = dsds_data_address_extension
-        l("DSDS_DATA_PDU_ADDRESS_SSI: " + str(dsds_data_address_ssi) + " (FROM)", "SDS")
+        if in_ts == 0:
+            addr_type = "TO"
+        else:
+            addr_type = "FROM"
+        l("DSDS_DATA_PDU_ADDRESS_SSI: " + str(dsds_data_address_ssi) + " (" + addr_type + ")", "SDS")
         l("DSDS_DATA_PDU_ADDRESS_EXTENSION: " + str(dsds_data_address_extension), "SDS")
 
         dsds_data_short_data_type_identifier = int(tmsdu_bitstream[tmsdu_idx:tmsdu_idx + 2], 2)

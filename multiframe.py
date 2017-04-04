@@ -9,6 +9,22 @@ def getMacType(in_pdu):
 
     bitstream = hex_to_binary(in_pdu)
 
+    if len(bitstream) == 96:
+        macpdutype = int(bitstream[0])
+        addrtype = int(bitstream[3:5], 2)
+
+        if addrtype == 1:
+            addrlen = 10
+        else:
+            addrlen = 24
+
+        capreq = int(bitstream[5 + addrlen]) & int(bitstream[5 + addrlen + 1])
+        fragflag = int(bitstream[5 + addrlen + 2])
+
+        if macpdutype == 0 and capreq == 1 and fragflag == 1:
+            print('START')
+            return Fragtype.MAC_START
+    
     macpdutype = int(bitstream[:2], 2)
 
     if macpdutype == 0:
@@ -16,8 +32,10 @@ def getMacType(in_pdu):
         macpdulen = int(bitstream[subidx:subidx + 6], 2)
 
         if macpdulen == 63:
+            print('START')
             return Fragtype.MAC_START
         else:
+            print('SINGLE')
             return Fragtype.MAC_SINGLE
 
     elif macpdutype == 1:
@@ -25,8 +43,10 @@ def getMacType(in_pdu):
         macpdusubtype = int(bitstream[subidx:subidx + 1], 2)
 
         if macpdusubtype == 0:
+            print('INNER')
             return Fragtype.MAC_INNER
         elif macpdusubtype == 1:
+            print('END')
             return Fragtype.MAC_END
 
 

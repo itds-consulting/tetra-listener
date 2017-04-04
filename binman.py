@@ -49,9 +49,10 @@ def bitesFromHex(in_hex):
     outbin = ""
     if in_hex[0] == ":":
         in_hex = in_hex[1:]
-    if len(in_hex) % 3 != 0:
-        in_hex += ":"
-    for x in xrange(0, len(in_hex) // 3):
-        hex_chunk = in_hex[x * 3:(x * 3) + 2]
-        outbin = outbin + hex_to_binary(hex_chunk)
+
+    if ':' in in_hex:
+        outbin = ''.join([hex_to_binary(x) for x in in_hex.split(':')])
+    else:
+        outbin = ''.join([hex_to_binary(in_hex[i*2:i*2+2]) for i in range(len(in_hex) // 2)])
+
     return outbin
