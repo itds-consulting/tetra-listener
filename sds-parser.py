@@ -64,27 +64,38 @@ def tshark_out_thr(tshark_filter, pduq):
 
 def pcap_in_thr(path, q):
     """ Thread that reads packets from path and stuffs them into q """
-    f = open(path, "rb")
-    data = ""
+    respawns = 0
+    x = time.time()
     while True:
-        newdata = f.read(1024)
-        if not newdata:
-            break
-        data += newdata
-        hlen = 4 * 4
-        while len(data) >= hlen:
-            hdr = data[:hlen]
-            ret = struct.unpack('4I', hdr)
-            assert ret[2] == ret[3], "pcap packet truncate %X %X %X %X" % (ret[0], ret[1], ret[2], ret[3])
-            size = ret[2] + hlen
+      respawns += 1
+      f = open(path, "rb")
+      data = ""
+      f.read(len(pcap_header))
+      while True:
+          newdata = f.read(1024)
+          if not newdata:
+              f.close()
+              break
+          data += newdata
+          hlen = 4 * 4
+          while len(data) >= hlen:
+              hdr = data[:hlen]
+              ret = struct.unpack('4I', hdr)
+              assert ret[2] == ret[3], "pcap packet truncate %X %X %X %X" % (ret[0], ret[1], ret[2], ret[3])
+              size = ret[2] + hlen
 
-            if len(data) > size:
-                packet = data[:size]
-                q.put(packet)
-                data = data[size:]
-            else:
-                break
-    l("Read for pipe %s died" % path, "CRIT")
+              if len(data) > size:
+                  packet = data[:size]
+                  q.put(packet)
+                  data = data[size:]
+              else:
+                  break
+      l("Read for pipe %s died, respawning" % path, "WARN")
+      if time.time() - x < 10 and respawns > 10:
+        l("Read for pipe %s respawning too fast, throttling" % path, "CRIT")
+        time.sleep(10)
+        respawns = 0
+        x = time.time()
 
 
 def stdin_thr(q):
