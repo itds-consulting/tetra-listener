@@ -1,0 +1,18 @@
+diff --git a/radio-tetra/tetra.sh b/radio-tetra/tetra.sh
+index b5d161b..1946648 100755
+--- a/radio-tetra/tetra.sh
++++ b/radio-tetra/tetra.sh
+@@ -50,9 +50,12 @@ cleanup() {
+ trap cleanup EXIT
+ cd "${OSMOTETRA_DIR}"
+ #rm -rf ${FIFO_TMP_DIR}
++mkdir -p /tmp/fifos
+ for i in `seq 0 ${STREAMS}`; do
+ #	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${REC_TMP_DIR}/log${i}.txt" 2>&1 & #DEBUG
+-	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${FIFO_TMP_DIR}/log${i}.txt" 2>&1 &
++#	./tetra-rx "${FIFO_TMP_DIR}/bits${i}" "${REC_TMP_DIR}/${i}" >"${FIFO_TMP_DIR}/log${i}.txt" 2>&1 &
++	mkfifo /tmp/fifos/fifo$i
++	./tetra-rx -a $i -t /tmp/fifos/fifo$i -d "${REC_TMP_DIR}/${i}" "${FIFO_TMP_DIR}/bits${i}" >/dev/null 2>&1 &
+ done
+ 
+ start_demod

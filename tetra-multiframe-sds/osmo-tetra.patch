@@ -1,0 +1,250 @@
+diff --git a/src/Makefile b/src/Makefile
+index f6ff0fc..d71be02 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -1,4 +1,4 @@
+-CFLAGS=-g -O0 -Wall `pkg-config --cflags libosmocore 2> /dev/null` -I.
++CFLAGS=-g -O2 -Wall `pkg-config --cflags libosmocore 2> /dev/null` -I.
+ LDLIBS=`pkg-config --libs libosmocore 2> /dev/null` -losmocore
+ 
+ all: conv_enc_test crc_test tetra-rx float_to_bits tunctl
+diff --git a/src/lower_mac/tetra_lower_mac.c b/src/lower_mac/tetra_lower_mac.c
+index d3ff54d..08d301e 100644
+--- a/src/lower_mac/tetra_lower_mac.c
++++ b/src/lower_mac/tetra_lower_mac.c
+@@ -187,7 +187,8 @@ void tp_sap_udata_ind(enum tp_sap_data_type type, const uint8_t *bits, unsigned
+ 
+ /*  ###### Begin traffic dump patch ###### */
+ 
+-	if ((type == TPSAP_T_SCH_F) && (tms->cur_burst.is_traffic)) {
++	extern char *dumpdir;
++	if ((type == TPSAP_T_SCH_F) && (tms->cur_burst.is_traffic) && dumpdir) {
+ 		printf("SAVING FRAME\n");
+ 		char fname[200];
+ 		int16_t block[690];
+@@ -197,7 +198,6 @@ void tp_sap_udata_ind(enum tp_sap_data_type type, const uint8_t *bits, unsigned
+ 		/* Open target file */
+ 		//snprintf(fname, 100, "traffic_%d_%d.out", tcd->time.tn, tms->cur_burst.is_traffic);
+ 		//snprintf(fname, 100, "traffic_%d.out", tcd->time.tn);
+-		extern char *dumpdir;
+ 		snprintf(fname, 199, "%s/traffic_%d.out", dumpdir, 666	/*tms->cur_burst.is_traffic*/);
+ 		f = fopen(fname, "ab");
+ 
+diff --git a/src/pcap.h b/src/pcap.h
+new file mode 100644
+index 0000000..f73259f
+--- /dev/null
++++ b/src/pcap.h
+@@ -0,0 +1,50 @@
++#ifndef PCAP_H
++#define PCAP_H
++#include <inttypes.h>
++
++typedef uint32_t guint32;
++typedef uint16_t guint16;
++typedef int32_t gint32;
++
++typedef struct __attribute__ ((__packed__)) pcap_hdr_s {
++        guint32 magic_number;   /* magic number */
++        guint16 version_major;  /* major version number */
++        guint16 version_minor;  /* minor version number */
++        gint32  thiszone;       /* GMT to local correction */
++        guint32 sigfigs;        /* accuracy of timestamps */
++        guint32 snaplen;        /* max length of captured packets, in octets */
++        guint32 network;        /* data link type */
++} pcap_hdr_t;
++
++typedef struct __attribute__ ((__packed__)) pcaprec_hdr_s {
++        guint32 ts_sec;         /* timestamp seconds */
++        guint32 ts_usec;        /* timestamp microseconds */
++        guint32 incl_len;       /* number of octets of packet saved in file */
++        guint32 orig_len;       /* actual length of packet */
++} pcaprec_hdr_t;
++
++#define PCAP_MAGIC 0xa1b2c3d4
++#define PCAP_MAJOR 2
++#define PCAP_MINOR 4
++#define PCAP_SNAPLEN 65535
++#define PCAP_ETHERNET 1
++
++unsigned char fake_frame_header[] = {
++	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Ethernet frame, dst and src MAC
++	0x08, 0x00,		// EtherType 0800 = IPv4
++	0x45,			// IPv4 (0x4_), 20B header (0x_5)
++	0x00,			// no diffserv
++	0x00, 0xff,		// length
++	0xc6, 0xd1,		// some random frag
++	0x40, 0x00,		// don't frag
++	0x3f,			// TTL
++	0x11,			// IP proto = UDP
++	0x00, 0x00,		// checksum
++	0x7f, 0x00, 0x00, 0x01,	// src = 127.0.0.1
++	0x7f, 0x00, 0x00, 0x01, // dst = 127.0.0.1
++	0xbb, 0x13,		// source port
++	0x12, 0x79,		// dst port = 4729
++	0x00, 0xeb,		// length = iplen-20
++	0x00, 0x00		// checksum
++};
++#endif
+diff --git a/src/tetra-rx.c b/src/tetra-rx.c
+index bcc33e7..6d87b1f 100644
+--- a/src/tetra-rx.c
++++ b/src/tetra-rx.c
+@@ -40,6 +40,8 @@
+ void *tetra_tall_ctx;
+ char *dumpdir;
+ 
++char *pcap_file_path;
++int arfcn;
+ 
+ static int process_sym_fl(float fl)
+ {
+@@ -90,7 +92,9 @@ int main(int argc, char **argv)
+ 	struct tetra_rx_state *trs;
+ 	struct tetra_mac_state *tms;
+ 
+-	while ((opt = getopt(argc, argv, "sv")) != -1) {
++	char no_udp_tap = 0;
++
++	while ((opt = getopt(argc, argv, "sva:t:d:n")) != -1) {
+ 		switch (opt) {
+ 		case 's':
+ 			streaming = 1;
+@@ -98,21 +102,38 @@ int main(int argc, char **argv)
+ 		case 'v':
+ 			opt_verbose = 1;
+ 			break;
+-
++		case 'a':
++			arfcn = atoi(optarg);
++			break;
++		case 't':
++			//pcap_file_path = malloc(strlen(optarg));
++			//memcpy(pcap_file_path, optarg, strlen(optarg));
++			pcap_file_path = optarg;
++			break;
++		case 'd':
++			dumpdir = optarg;
++			break;
++		case 'n':
++			fprintf(stderr, "-n does not work\n");
++			exit(1);
++			no_udp_tap = 1;
++			break;
+ 		default:
++			fprintf(stderr, "Unknown option %c\n", opt);
+ 			exit(2);
+ 		}
+ 	}
+ 
+ 	if (argc <= optind) {
+-		fprintf(stderr, "Usage: %s -s [-v] <filestream>\n", argv[0]);
++		fprintf(stderr, "Usage: %s [-a ARFCN] [-t GSMTAP_PATH] [-d DUMPDIR] [-n] -s [-v] <filestream>\n", argv[0]);
++		fprintf(stderr, "Usage: -n .. no UDP GSMTAP messages\n");
+ 		fprintf(stderr, "Usage: %s <file_with_1_byte_per_bit>\n", argv[0]);
+ 		exit(1);
+ 	}
+ 
+-	dumpdir=argv[2];
+-
+-	tetra_gsmtap_init("localhost", 0);
++	if (no_udp_tap == 0) {
++		tetra_gsmtap_init("localhost", 0);
++	}
+ 
+ 	tms = talloc_zero(tetra_tall_ctx, struct tetra_mac_state);
+ 	tetra_mac_state_init(tms);
+diff --git a/src/tetra_gsmtap.c b/src/tetra_gsmtap.c
+index f575c20..020c9b7 100644
+--- a/src/tetra_gsmtap.c
++++ b/src/tetra_gsmtap.c
+@@ -4,6 +4,7 @@
+ #include <unistd.h>
+ #include <stdio.h>
+ #include <errno.h>
++#include <time.h>
+ 
+ #include <osmocom/core/msgb.h>
+ #include <osmocom/core/gsmtap.h>
+@@ -14,7 +15,12 @@
+ #include "tetra_common.h"
+ #include "tetra_tdma.h"
+ 
++#include "pcap.h"
++
+ static struct gsmtap_inst *g_gti = NULL;
++FILE *pcap_file;
++extern char *pcap_file_path;
++extern int arfcn;
+ 
+ static const uint8_t lchan2gsmtap[] = {
+ 	[TETRA_LC_SCH_F]	= GSMTAP_TETRA_SCH_F,
+@@ -27,7 +33,6 @@ static const uint8_t lchan2gsmtap[] = {
+ 	[TETRA_LC_BNCH]		= GSMTAP_TETRA_BNCH,
+ };
+ 
+-
+ struct msgb *tetra_gsmtap_makemsg(struct tetra_tdma_time *tm, enum tetra_log_chan lchan,
+ 				  uint8_t ts, uint8_t ss, int8_t signal_dbm,
+ 				  uint8_t snr, const ubit_t *bitdata, unsigned int bitlen)
+@@ -49,6 +54,7 @@ struct msgb *tetra_gsmtap_makemsg(struct tetra_tdma_time *tm, enum tetra_log_cha
+ 	gh->timeslot = ts;
+ 	gh->sub_slot = ss;
+ 	gh->snr_db = snr;
++	gh->arfcn = htons(arfcn);
+ 	gh->signal_dbm = signal_dbm;
+ 	gh->frame_number = htonl(fn);
+ 	gh->sub_type = lchan2gsmtap[lchan];
+@@ -61,8 +67,31 @@ struct msgb *tetra_gsmtap_makemsg(struct tetra_tdma_time *tm, enum tetra_log_cha
+ 	return msg;
+ }
+ 
++void pcap_pipe(char * buf, size_t n)
++{
++	if (pcap_file) {
++		fwrite(buf, n, 1, pcap_file);
++		fflush(pcap_file);
++	}
++}
++
+ int tetra_gsmtap_sendmsg(struct msgb *msg)
+ {
++	pcaprec_hdr_t hdr;
++	bzero(&hdr, sizeof(hdr));
++
++	struct timespec now;
++	clock_gettime(CLOCK_REALTIME, &now);
++
++	hdr.ts_sec = now.tv_sec;
++	hdr.ts_usec = now.tv_nsec/1000;
++	hdr.incl_len = msg->len + sizeof(fake_frame_header);
++	hdr.orig_len = hdr.incl_len;
++
++	pcap_pipe((char*)&hdr, sizeof(pcaprec_hdr_t));
++	pcap_pipe((char*)&fake_frame_header, sizeof(fake_frame_header));
++	pcap_pipe((char*)msg->data, msg->len);
++
+ 	if (g_gti)
+ 		return gsmtap_sendmsg(g_gti, msg);
+ 	else
+@@ -76,5 +105,20 @@ int tetra_gsmtap_init(const char *host, uint16_t port)
+ 		return -EINVAL;
+ 	gsmtap_source_add_sink(g_gti);
+ 
++	if (pcap_file_path) {
++		pcap_hdr_t hdr;
++
++		bzero(&hdr, sizeof(hdr));
++
++		hdr.magic_number = PCAP_MAGIC;
++		hdr.version_major = PCAP_MAJOR;
++		hdr.version_minor = PCAP_MINOR;
++		hdr.snaplen = PCAP_SNAPLEN;
++		hdr.network = PCAP_ETHERNET;
++
++		pcap_file = fopen(pcap_file_path, "wb");
++		//pcap_pipe((char*)&hdr, sizeof(pcap_hdr_t));
++	}
++
+ 	return 0;
+ }

@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+sds-betacompositor.py
+sds.db
+dump.pcap
+dump.cpdu
+.idea
