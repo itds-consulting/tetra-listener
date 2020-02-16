@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 set -e
 
@@ -27,9 +27,9 @@ rm -rf amr-code c-code c-word
 unzip -L en_30039502v010301p0.zip
 
 for p in `cat $ROOT/osmo-tetra/etsi_codec-patches/series`; do
-    patch -p1 < $ROOT/osmo-tetra/etsi_codec-patches/$p;
+    patch -p1 --binary < $ROOT/osmo-tetra/etsi_codec-patches/$p;
 done
-patch -p1 < $ROOT/etsi_codec-patches-brm/cflags.patch
+patch -p0 --binary < $ROOT/etsi_codec-patches-brm/cflags.patch
 
 make -C amr-code
 make -C c-code

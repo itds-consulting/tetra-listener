@@ -1,22 +1,22 @@
---- etsi.orig/c-code/makefile	2014-10-01 04:57:45.677527024 +0200
-+++ etsi/c-code/makefile	2014-10-01 04:57:56.011646581 +0200
-@@ -23,7 +23,7 @@
- 
- CC=gcc
- 
--CFLAGS	=	-I. -Wall -m32
-+CFLAGS	=	-I. -Wall -m32 -O2
- 
- SRCS1		=	scoder.c		scod_tet.c		sub_sc_d.c \
- 			sub_dsp.c		fbas_tet.c		fexp_tet.c \
---- etsi.orig/amr-code/makefile	2014-10-01 05:06:53.847259407 +0200
-+++ etsi/amr-code/makefile	2014-10-01 05:07:05.023401428 +0200
+--- amr-code/makefile	2020-02-16 20:32:36.193622747 +0100
++++ amr-code/makefile-modified	2020-02-16 20:34:19.025519637 +0100
 @@ -21,7 +21,7 @@
  
  CC=gcc
  
--CFLAGS	=	-g -I. -Wall -m32
-+CFLAGS	=	-g -I. -Wall -m32 -O2
+-CFLAGS	=	-g -I. -Wall -O3
++CFLAGS	=	-g -I. -Wall -O3 -march=native
  
  SRCS1		=	ccoder.c	ccod_tet.c	init_params.c	sub_cc.c \
  			tetra_op.c
+--- c-code/makefile	2020-02-16 20:32:36.193622747 +0100
++++ c-code/makefile-modified	2020-02-16 20:34:28.293515789 +0100
+@@ -23,7 +23,7 @@
+ 
+ CC=gcc
+ 
+-CFLAGS	=	-I. -Wall -O3
++CFLAGS	=	-I. -Wall -O3 -march=native
+ 
+ SRCS1		=	scoder.c		scod_tet.c		sub_sc_d.c \
+ 			sub_dsp.c		fbas_tet.c		fexp_tet.c \
